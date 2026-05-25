@@ -10,7 +10,7 @@ python -m venv .venv && source .venv/bin/activate
 pip install -e .
 python -m pivot_sidecar   # 监听 stdin / 写 stdout
 
-# 打包（CI 在三个平台各跑一次）
+# 打包（CI 在 macOS arm64 + Windows x64 各跑一次）
 pip install -e .[build]
 python build.py            # 产出 dist/pivot-sidecar(.exe)
 ```

@@ -1,7 +1,7 @@
 # Pivot Desk · 数据处理工作台
 
 一个用 **Tauri 2 + React + TypeScript + Tailwind**（shadcn 风格组件）构建的桌面工具，
-通过 **Python sidecar** 处理六类财务文件任务。三平台（macOS / Windows / Linux）发布
+通过 **Python sidecar** 处理六类财务文件任务。双平台（macOS Apple Silicon / Windows x64）发布
 由 **GitHub Actions** 矩阵构建产出。
 
 > 视觉系统：方向 A · 静谧编辑器 (Quiet Editor)，IBM Plex Sans + 深绿单点强调。
@@ -26,7 +26,7 @@ scaffold/
 │  ├─ Cargo.toml
 │  ├─ tauri.conf.json
 │  ├─ capabilities/default.json
-│  └─ binaries/          # 三平台 sidecar 二进制（CI 注入）
+│  └─ binaries/          # 平台 sidecar 二进制（CI 注入）
 ├─ sidecar/              # Python 工作引擎
 │  ├─ pivot_sidecar/
 │  │  ├─ __main__.py     # stdio JSON-RPC 入口
@@ -37,7 +37,7 @@ scaffold/
 │  └─ build.py           # PyInstaller 打包脚本
 └─ .github/workflows/
    ├─ ci.yml             # lint / typecheck / build
-   └─ release.yml        # 三平台 tauri-action 矩阵
+   └─ release.yml        # macOS arm64 + Windows x64 tauri-action 矩阵
 ```
 
 ## 6 项任务
@@ -79,10 +79,10 @@ pnpm tauri dev
 git tag v0.1.0 && git push --tags
 ```
 
-工作流会在三个平台分别：
+工作流会在两个平台分别：
 1. 安装 Python，运行 `sidecar/build.py` 产出对应 target-triple 的二进制
 2. 安装 Node，跑 `pnpm install && pnpm build`
-3. 用 `tauri-apps/tauri-action` 出 `.dmg / .msi / .AppImage / .deb`
+3. 用 `tauri-apps/tauri-action` 出 `.dmg`（Apple Silicon）/ `.msi`（Windows）
 4. 上传到一个 Draft Release
 
 ## 设计文件
