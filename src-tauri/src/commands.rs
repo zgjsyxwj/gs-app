@@ -149,5 +149,7 @@ pub async fn start_run(app: AppHandle, args: RunStartArgs) -> Result<String, Str
 
 #[tauri::command]
 pub async fn cancel_run(run_id: String) -> Result<(), String> {
-    sidecar::cancel_run(&run_id).await.map_err(|e| e.to_string())
+    sidecar::cancel_run(&run_id)
+        .await
+        .map_err(|e| e.to_string())
 }
