@@ -41,6 +41,7 @@
       "binaries/pivot-sidecar"
     ],
     "macOS": {
+      "signingIdentity": "-",
       "entitlements": null,
       "providerShortName": null
     },
