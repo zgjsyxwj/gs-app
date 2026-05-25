@@ -37,7 +37,14 @@ struct Inner {
 static STATE: OnceCell<Arc<Mutex<Inner>>> = OnceCell::new();
 
 fn state() -> Arc<Mutex<Inner>> {
-    STATE.get_or_init(|| Arc::new(Mutex::new(Inner { child: None, handle: SidecarHandle::default() }))).clone()
+    STATE
+        .get_or_init(|| {
+            Arc::new(Mutex::new(Inner {
+                child: None,
+                handle: SidecarHandle::default(),
+            }))
+        })
+        .clone()
 }
 
 pub async fn spawn(app: AppHandle) -> Result<()> {
@@ -46,7 +53,9 @@ pub async fn spawn(app: AppHandle) -> Result<()> {
         .sidecar("pivot-sidecar")
         .map_err(|e| anyhow!("sidecar manifest missing: {e:?}"))?;
 
-    let (mut rx, child) = sidecar.spawn().map_err(|e| anyhow!("sidecar spawn failed: {e:?}"))?;
+    let (mut rx, child) = sidecar
+        .spawn()
+        .map_err(|e| anyhow!("sidecar spawn failed: {e:?}"))?;
     let pid = child.pid();
 
     {
@@ -68,8 +77,10 @@ pub async fn spawn(app: AppHandle) -> Result<()> {
         while let Some(ev) = rx.recv().await {
             match ev {
                 CommandEvent::Stdout(line) => forward(&app_for_pump, &line),
-                CommandEvent::Stderr(line) => log::warn!("sidecar stderr: {}", String::from_utf8_lossy(&line)),
-                CommandEvent::Error(e)     => log::error!("sidecar error: {e}"),
+                CommandEvent::Stderr(line) => {
+                    log::warn!("sidecar stderr: {}", String::from_utf8_lossy(&line))
+                }
+                CommandEvent::Error(e) => log::error!("sidecar error: {e}"),
                 CommandEvent::Terminated(t) => {
                     log::info!("sidecar exited: code={:?} signal={:?}", t.code, t.signal);
                     let s = state();
@@ -103,27 +114,43 @@ pub async fn spawn(app: AppHandle) -> Result<()> {
 }
 
 fn forward(app: &AppHandle, line: &[u8]) {
-    let s = match std::str::from_utf8(line) { Ok(s) => s.trim(), Err(_) => return };
-    if s.is_empty() { return; }
+    let s = match std::str::from_utf8(line) {
+        Ok(s) => s.trim(),
+        Err(_) => return,
+    };
+    if s.is_empty() {
+        return;
+    }
 
     // Parse and re-emit as a normalized event payload.
     let v: Value = match serde_json::from_str(s) {
         Ok(v) => v,
-        Err(_) => { log::debug!("sidecar non-json line: {s}"); return; }
+        Err(_) => {
+            log::debug!("sidecar non-json line: {s}");
+            return;
+        }
     };
 
     // The sidecar greets us once on boot — capture its real version strings
     // rather than leaving the SidecarHandle stuck on the spawn() placeholders.
     if v.get("event").and_then(|x| x.as_str()) == Some("hello") {
-        let version = v.get("version").and_then(|x| x.as_str()).unwrap_or("unknown").to_string();
-        let py_version = v.get("python_version").and_then(|x| x.as_str()).unwrap_or("unknown").to_string();
+        let version = v
+            .get("version")
+            .and_then(|x| x.as_str())
+            .unwrap_or("unknown")
+            .to_string();
+        let py_version = v
+            .get("python_version")
+            .and_then(|x| x.as_str())
+            .unwrap_or("unknown")
+            .to_string();
         tauri::async_runtime::spawn(async move {
             let s = state();
             let mut s = s.lock().await;
             s.handle.version = version;
             s.handle.python_version = py_version;
         });
-        return; // don't forward to the frontend — transport-level event
+        return;
     }
 
     let _ = app.emit("run:event", &v);
@@ -151,6 +178,7 @@ struct RunRequest<'a> {
     method: &'a str,
     params: RunParams<'a>,
 }
+
 #[derive(Serialize)]
 struct RunParams<'a> {
     task_id: &'a str,
@@ -181,8 +209,13 @@ pub async fn start_run(
 
     let s = state();
     let mut s = s.lock().await;
-    let child = s.child.as_mut().ok_or_else(|| anyhow!("sidecar not running"))?;
-    child.write(line.as_bytes()).map_err(|e| anyhow!("write failed: {e:?}"))?;
+    let child = s
+        .child
+        .as_mut()
+        .ok_or_else(|| anyhow!("sidecar not running"))?;
+    child
+        .write(line.as_bytes())
+        .map_err(|e| anyhow!("write failed: {e:?}"))?;
     Ok(run_id)
 }
 
@@ -190,7 +223,12 @@ pub async fn cancel_run(run_id: &str) -> Result<()> {
     let line = format!("{{\"id\":\"{}\",\"method\":\"cancel\"}}\n", run_id);
     let s = state();
     let mut s = s.lock().await;
-    let child = s.child.as_mut().ok_or_else(|| anyhow!("sidecar not running"))?;
-    child.write(line.as_bytes()).map_err(|e| anyhow!("write failed: {e:?}"))?;
+    let child = s
+        .child
+        .as_mut()
+        .ok_or_else(|| anyhow!("sidecar not running"))?;
+    child
+        .write(line.as_bytes())
+        .map_err(|e| anyhow!("write failed: {e:?}"))?;
     Ok(())
 }
