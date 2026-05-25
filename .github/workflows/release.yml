@@ -136,13 +136,14 @@ jobs:
 
             // Match updater artifacts. Tauri 2 produces:
             //   macOS aarch64 → *_aarch64.app.tar.gz + .sig
-            //   Windows x64   → *_x64-setup.nsis.zip + .sig  OR  *_x64_*.msi.zip + .sig
+            //   Windows x64   → *_x64-setup.exe + .sig  (NSIS, preferred for updater)
+            //                   *_x64_en-US.msi + .sig  (fallback)
             const findSig = (re) => release.assets.find(a => re.test(a.name) && a.name.endsWith('.sig'));
             const bundleFor = (sigName) => release.assets.find(a => a.name === sigName.replace(/\.sig$/, ''));
 
             const matchers = {
               'darwin-aarch64': /aarch64\.app\.tar\.gz\.sig$/,
-              'windows-x86_64': /x64.*\.(nsis|msi)\.zip\.sig$/,
+              'windows-x86_64': /x64-setup\.exe\.sig$/,   // prefer NSIS .exe; .msi is fallback
             };
 
             const downloadText = async (asset_id) => {
@@ -166,9 +167,15 @@ jobs:
                 core.warning(`sig ${sig.name} has no matching bundle — skipping`);
                 continue;
               }
+              // Construct a tag-stable URL instead of `browser_download_url`,
+              // which during the draft phase resolves to an untagged-* path
+              // that breaks the moment a user's client tries to fetch the
+              // download (Tauri's updater does not follow GitHub draft URL
+              // redirects reliably). The /releases/download/<tag>/<name>
+              // form is stable from the moment the release is un-drafted.
               platforms[platform] = {
                 signature: await downloadText(sig.id),
-                url: bundle.browser_download_url,
+                url: `https://github.com/${context.repo.owner}/${context.repo.repo}/releases/download/${tag}/${encodeURIComponent(bundle.name)}`,
               };
             }
 
