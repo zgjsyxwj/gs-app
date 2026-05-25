@@ -1,0 +1,26 @@
+# deps
+node_modules
+.pnpm-store
+.venv
+__pycache__
+*.pyc
+*.egg-info/
+
+# build
+dist
+dist-ssr
+target
+src-tauri/binaries/*
+!src-tauri/binaries/.gitkeep
+src-tauri/gen/
+sidecar/build
+sidecar/dist
+sidecar/*.spec
+
+# env
+.env
+.env.local
+.DS_Store
+.vscode/
+.idea/
+*.log

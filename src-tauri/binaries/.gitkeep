@@ -1,0 +1,6 @@
+# CI drops three platform-specific PyInstaller bundles here:
+#   pivot-sidecar-x86_64-apple-darwin
+#   pivot-sidecar-aarch64-apple-darwin
+#   pivot-sidecar-x86_64-pc-windows-msvc.exe
+#   pivot-sidecar-x86_64-unknown-linux-gnu
+# Tauri picks the right one at bundle time via the externalBin manifest.

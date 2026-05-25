@@ -1,0 +1,34 @@
+mod commands;
+mod sidecar;
+
+use tauri::Manager;
+
+pub fn run() {
+    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
+
+    tauri::Builder::default()
+        .plugin(tauri_plugin_shell::init())
+        .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_fs::init())
+        .setup(|app| {
+            // Boot the Python sidecar once the window exists.
+            let handle = app.handle().clone();
+            tauri::async_runtime::spawn(async move {
+                if let Err(e) = sidecar::spawn(handle).await {
+                    log::error!("sidecar boot failed: {e:?}");
+                }
+            });
+            Ok(())
+        })
+        .invoke_handler(tauri::generate_handler![
+            commands::list_tasks,
+            commands::sidecar_status,
+            commands::sidecar_restart,
+            commands::pick_file,
+            commands::pick_folder,
+            commands::start_run,
+            commands::cancel_run,
+        ])
+        .run(tauri::generate_context!())
+        .expect("error while running pivot-desk");
+}
