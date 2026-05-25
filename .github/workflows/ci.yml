@@ -39,5 +39,12 @@ jobs:
           sudo apt-get install -y libwebkit2gtk-4.1-dev libsoup-3.0-dev libjavascriptcoregtk-4.1-dev librsvg2-dev libssl-dev
       - uses: Swatinem/rust-cache@v2
         with: { workspaces: 'src-tauri -> target' }
+      # tauri-build validates externalBin paths during compile; CI doesn't
+      # ship Linux but does lint on Linux, so stub the expected sidecar file
+      # for the host triple. Content is never read by the lint pipeline.
+      - name: stub sidecar binary for tauri-build
+        run: |
+          mkdir -p src-tauri/binaries
+          touch src-tauri/binaries/pivot-sidecar-x86_64-unknown-linux-gnu
       - run: cargo fmt --manifest-path src-tauri/Cargo.toml --check
       - run: cargo clippy --manifest-path src-tauri/Cargo.toml -- -D warnings
