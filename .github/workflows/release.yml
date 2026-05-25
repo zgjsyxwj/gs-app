@@ -5,6 +5,9 @@ on:
     tags: ['v*']
   workflow_dispatch:
 
+permissions:
+  contents: write   # tauri-action needs this to create the draft GitHub Release
+
 jobs:
   build:
     strategy:

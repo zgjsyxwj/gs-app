@@ -56,7 +56,7 @@ def main() -> int:
     src = DIST / f"pivot-sidecar{ext}"
     dst = BIN_OUT / f"pivot-sidecar-{args.target}{ext}"
     shutil.copy2(src, dst)
-    print(f"→ {dst}")
+    print(f"-> {dst}")
     return 0
 
 
