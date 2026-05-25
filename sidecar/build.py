@@ -16,6 +16,17 @@ DIST = ROOT / "dist"
 BIN_OUT = ROOT.parent / "src-tauri" / "binaries"
 
 
+def _platform_icon() -> Path | None:
+    icons = ROOT.parent / "src-tauri" / "icons"
+    if sys.platform.startswith("win"):
+        p = icons / "icon.ico"
+    elif sys.platform.startswith("darwin"):
+        p = icons / "icon.icns"
+    else:
+        return None
+    return p if p.exists() else None
+
+
 def host_target_triple() -> str:
     # Match Rust's default target-triples — keep these consistent with the CI matrix.
     m = platform.machine().lower()
@@ -45,10 +56,16 @@ def main() -> int:
         "--onefile",
         "--clean",
         "--noconfirm",
+        "--noupx",   # UPX-compressed binaries are a top false-positive trigger
         "--paths", ".",
         "--collect-submodules", "pivot_sidecar",
         "launcher.py",
     ]
+    # Embed a platform-native icon so the .exe / Mach-O looks less anonymous to
+    # Windows SmartScreen / antivirus heuristics. Missing icons are non-fatal.
+    icon = _platform_icon()
+    if icon is not None:
+        cmd[-1:-1] = ["--icon", str(icon)]
     print("$", " ".join(cmd))
     subprocess.check_call(cmd, cwd=ROOT)
 

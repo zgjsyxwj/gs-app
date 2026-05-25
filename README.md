@@ -85,6 +85,36 @@ git tag v0.1.0 && git push --tags
 3. 用 `tauri-apps/tauri-action` 出 `.dmg`（Apple Silicon）/ `.msi`（Windows）
 4. 上传到一个 Draft Release
 
+## 首次安装：用户会看到什么（重要）
+
+我们目前**没有**购买 Apple Developer / Windows Authenticode 代码签名证书，
+所以两个平台第一次打开都会触发系统的"未知来源"保护机制。
+请在分发给用户时把下面这一段一并发过去：
+
+### macOS（Apple Silicon）
+
+1. 双击 `Pivot Desk_x.y.z_aarch64.dmg`，把 `Pivot Desk` 拖入 `应用程序`
+2. **首次打开**：从启动台 / 应用程序文件夹**右键点击 → 选「打开」**，弹窗里再点「打开」
+   - 不要用双击；双击会被 Gatekeeper 拦下，提示 "Apple cannot verify the developer of …"
+3. 以后双击就能直接开
+
+> 如果看到 **"Pivot Desk.app" is damaged and can't be opened**，是 quarantine 属性
+> 异常残留导致；在终端跑一次 `xattr -cr "/Applications/Pivot Desk.app"` 就好。
+
+### Windows (x64)
+
+1. 双击 `Pivot Desk_x.y.z_x64-setup.exe`（或 `.msi`）
+2. **首次安装**：会看到蓝色背景的 **"Windows protected your PC"** 弹窗
+   - 点 **More info** → 出现 **Run anyway** 按钮 → 点它
+3. 装完后从开始菜单 / 桌面打开，不会再有弹窗
+4. 如果 Microsoft Defender 直接把文件隔离了，先在
+   **Windows 安全中心 → 病毒和威胁防护 → 保护历史记录** 里恢复，
+   然后再走步骤 2
+
+> 这两个弹窗都是**未签名应用的正常表现**，不代表软件有问题。
+> 后续如果需要无弹窗体验，需购买 Apple Developer Program（99 USD/yr）
+> + Authenticode 代码签名证书（70~700 USD/yr）。
+
 ## 设计文件
 
 `docs/design-direction-a/` 是 HTML 形式的设计稿，可直接在浏览器中查看（来自方向 A）。
