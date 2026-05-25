@@ -27,11 +27,12 @@ jobs:
       - uses: actions/setup-python@v5
         with: { python-version: "3.12" }
       - name: build sidecar binary
+        shell: bash
         env:
           TAURI_TARGET: ${{ matrix.target }}
         run: |
           pip install -e "./sidecar[build]"
-          python sidecar/build.py --target "${{ matrix.target }}"
+          python sidecar/build.py --target "$TAURI_TARGET"
 
       # ── Node + Rust ────────────────────────────────────────────────
       - uses: pnpm/action-setup@v4
