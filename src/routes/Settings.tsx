@@ -12,19 +12,28 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
   );
 }
 
-function Toggle({ on }: { on?: boolean }) {
+function Toggle({ on, onClick }: { on?: boolean; onClick?: () => void }) {
   return (
-    <span className={"relative inline-block h-[18px] w-8 rounded-full transition-colors " +
-      (on ? "bg-accent" : "bg-[#E6E2D6]")}>
+    <button
+      type="button"
+      role="switch"
+      aria-checked={!!on}
+      onClick={onClick}
+      className={"relative inline-block h-[18px] w-8 rounded-full transition-colors " +
+        (on ? "bg-accent" : "bg-[#E6E2D6]")}>
       <span className={"absolute top-[2px] h-3.5 w-3.5 rounded-full bg-white shadow transition-[left] " +
         (on ? "left-[16px]" : "left-[2px]")} />
-    </span>
+    </button>
   );
 }
 
+const AUTOCHECK_KEY = "pivot-desk.autoCheckUpdates";
+
 export default function Settings() {
   const [s, setS] = useState<SidecarStatus | null>(null);
+  const [autoCheck, setAutoCheck] = useState(() => localStorage.getItem(AUTOCHECK_KEY) !== "false");
   useEffect(() => { ipc.sidecarStatus().then(setS).catch(() => setS(null)); }, []);
+  useEffect(() => { localStorage.setItem(AUTOCHECK_KEY, String(autoCheck)); }, [autoCheck]);
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -50,7 +59,7 @@ export default function Settings() {
               <Row label="语言"><span className="rounded-sm border border-rule bg-white px-2 py-0.5 text-[12px]">简体中文</span></Row>
               <Row label="启动时打开"><span className="rounded-sm border border-rule bg-white px-2 py-0.5 text-[12px]">主页</span></Row>
               <Row label="完成后通知"><Toggle on /></Row>
-              <Row label="自动检查更新"><Toggle on /></Row>
+              <Row label="自动检查更新"><Toggle on={autoCheck} onClick={() => setAutoCheck(v => !v)} /></Row>
             </Card>
           </section>
 

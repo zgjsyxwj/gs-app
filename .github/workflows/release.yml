@@ -101,10 +101,104 @@ jobs:
       - run: pnpm install --frozen-lockfile
 
       # ── Tauri bundle ───────────────────────────────────────────────
+      # TAURI_SIGNING_PRIVATE_KEY + _PASSWORD enable updater artifact signing.
+      # The .sig files travel alongside the bundles in the draft release; the
+      # publish-latest-json job below aggregates them into latest.json.
       - name: build tauri app
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           releaseId: ${{ needs.create-release.outputs.release_id }}
           args: --target ${{ matrix.target }}
+
+  # After both platform builds finish, read the .sig assets back from the draft
+  # release, assemble latest.json (the updater manifest), upload it, and then
+  # un-draft the release so `releases/latest/download/latest.json` resolves.
+  publish-latest-json:
+    needs: [create-release, build]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@v7
+        env:
+          RELEASE_ID: ${{ needs.create-release.outputs.release_id }}
+        with:
+          script: |
+            const releaseId = Number(process.env.RELEASE_ID);
+            const tag = context.ref.replace('refs/tags/', '');
+            const version = tag.replace(/^v/, '');
+
+            const { data: release } = await github.rest.repos.getRelease({
+              owner: context.repo.owner, repo: context.repo.repo, release_id: releaseId
+            });
+
+            // Match updater artifacts. Tauri 2 produces:
+            //   macOS aarch64 → *_aarch64.app.tar.gz + .sig
+            //   Windows x64   → *_x64-setup.nsis.zip + .sig  OR  *_x64_*.msi.zip + .sig
+            const findSig = (re) => release.assets.find(a => re.test(a.name) && a.name.endsWith('.sig'));
+            const bundleFor = (sigName) => release.assets.find(a => a.name === sigName.replace(/\.sig$/, ''));
+
+            const matchers = {
+              'darwin-aarch64': /aarch64\.app\.tar\.gz\.sig$/,
+              'windows-x86_64': /x64.*\.(nsis|msi)\.zip\.sig$/,
+            };
+
+            const downloadText = async (asset_id) => {
+              const r = await github.rest.repos.getReleaseAsset({
+                owner: context.repo.owner, repo: context.repo.repo, asset_id,
+                headers: { accept: 'application/octet-stream' },
+              });
+              // octokit returns ArrayBuffer when accept is octet-stream
+              return Buffer.from(r.data).toString('utf8').trim();
+            };
+
+            const platforms = {};
+            for (const [platform, re] of Object.entries(matchers)) {
+              const sig = findSig(re);
+              if (!sig) {
+                core.warning(`no updater sig for ${platform} — skipping`);
+                continue;
+              }
+              const bundle = bundleFor(sig.name);
+              if (!bundle) {
+                core.warning(`sig ${sig.name} has no matching bundle — skipping`);
+                continue;
+              }
+              platforms[platform] = {
+                signature: await downloadText(sig.id),
+                url: bundle.browser_download_url,
+              };
+            }
+
+            if (!Object.keys(platforms).length) {
+              core.setFailed('no updater platforms resolved — refusing to publish');
+              return;
+            }
+
+            const manifest = {
+              version,
+              notes: release.body || `Pivot Desk ${tag}`,
+              pub_date: new Date().toISOString(),
+              platforms,
+            };
+
+            // Replace any prior latest.json on this release.
+            const existing = release.assets.find(a => a.name === 'latest.json');
+            if (existing) {
+              await github.rest.repos.deleteReleaseAsset({
+                owner: context.repo.owner, repo: context.repo.repo, asset_id: existing.id,
+              });
+            }
+            await github.rest.repos.uploadReleaseAsset({
+              owner: context.repo.owner, repo: context.repo.repo, release_id: releaseId,
+              name: 'latest.json', data: JSON.stringify(manifest, null, 2),
+            });
+
+            // Un-draft: this is what makes /releases/latest/download/latest.json resolve.
+            await github.rest.repos.updateRelease({
+              owner: context.repo.owner, repo: context.repo.repo, release_id: releaseId,
+              draft: false,
+            });
+            core.info(`published ${tag} with platforms: ${Object.keys(platforms).join(', ')}`);

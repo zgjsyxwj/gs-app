@@ -1,6 +1,7 @@
 import { Outlet } from "react-router-dom";
 import TitleBar from "@/components/TitleBar";
 import Sidebar from "@/components/Sidebar";
+import UpdateBanner from "@/components/UpdateBanner";
 
 export default function App() {
   return (
@@ -12,6 +13,7 @@ export default function App() {
           <Outlet />
         </main>
       </div>
+      <UpdateBanner />
     </div>
   );
 }

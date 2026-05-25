@@ -10,6 +10,8 @@
  */
 import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
+import { check as checkUpdater, type Update } from "@tauri-apps/plugin-updater";
+import { relaunch } from "@tauri-apps/plugin-process";
 
 export type SidecarStatus = {
   connected: boolean;
@@ -41,6 +43,18 @@ export type RunEvent =
   | { kind: "log"; runId: string; t: string; lvl: "info" | "warn" | "ok" | "err"; msg: string }
   | { kind: "done"; runId: string; ok: boolean; durationMs: number; outputs: string[]; warnings: string[] };
 
+export type UpdateInfo = {
+  available: boolean;
+  version?: string;
+  currentVersion?: string;
+  notes?: string;
+  date?: string;
+};
+
+// Stash the resolved Update handle so install can act on it without leaking
+// the plugin's type through this module's public API.
+let pendingUpdate: Update | null = null;
+
 export const ipc = {
   listTasks:        ()                       => invoke<TaskDescriptor[]>("list_tasks"),
   sidecarStatus:    ()                       => invoke<SidecarStatus>("sidecar_status"),
@@ -52,5 +66,24 @@ export const ipc = {
 
   onRunEvent(cb: (ev: RunEvent) => void): Promise<UnlistenFn> {
     return listen<RunEvent>("run:event", e => cb(e.payload));
-  }
+  },
+
+  async checkForUpdate(): Promise<UpdateInfo> {
+    const u = await checkUpdater();
+    pendingUpdate = u;
+    if (!u) return { available: false };
+    return {
+      available: true,
+      version: u.version,
+      currentVersion: u.currentVersion,
+      notes: u.body,
+      date: u.date,
+    };
+  },
+
+  async installAndRelaunch(): Promise<void> {
+    if (!pendingUpdate) throw new Error("no pending update — call checkForUpdate first");
+    await pendingUpdate.downloadAndInstall();
+    await relaunch();
+  },
 };
