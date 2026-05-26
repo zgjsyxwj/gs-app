@@ -32,6 +32,7 @@ pub fn run() {
             commands::payslip_scan,
             commands::reveal_in_folder,
             commands::zip_files,
+            commands::open_url,
         ])
         .run(tauri::generate_context!())
         .expect("error while running pivot-desk");

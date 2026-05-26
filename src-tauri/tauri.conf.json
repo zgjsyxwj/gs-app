@@ -57,6 +57,7 @@
       "active": true,
       "dialog": false,
       "endpoints": [
+        "https://pivot-desk-updater.zgjsyxwj.workers.dev/latest.json",
         "https://github.com/zgjsyxwj/gs-app/releases/latest/download/latest.json"
       ],
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEMyMUI2QjE4MzRGNzE1MwpSV1JUY1UrRHNiWWhEUE1IRG8vNTJOK3BOTS9FbmNhNmVBVEVTaFhSRUpTZjUySWVGMzBrN1owUAo="

@@ -1,0 +1,6 @@
+name = "pivot-desk-updater"
+main = "worker.js"
+compatibility_date = "2025-09-01"
+
+# Free plan — no bindings, no KV, no queues. Pure stateless proxy + edge cache.
+# Daily request cap: 100,000 / day. Single-app updater traffic is nowhere near.

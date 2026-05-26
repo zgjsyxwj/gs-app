@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { ipc, type SidecarStatus } from "@/lib/ipc";
+import { CHECK_EVENT } from "@/components/UpdateBanner";
 
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -59,7 +60,17 @@ export default function Settings() {
               <Row label="语言"><span className="rounded-sm border border-rule bg-white px-2 py-0.5 text-[12px]">简体中文</span></Row>
               <Row label="启动时打开"><span className="rounded-sm border border-rule bg-white px-2 py-0.5 text-[12px]">主页</span></Row>
               <Row label="完成后通知"><Toggle on /></Row>
-              <Row label="自动检查更新"><Toggle on={autoCheck} onClick={() => setAutoCheck(v => !v)} /></Row>
+              <Row label="自动检查更新">
+                <div className="flex items-center gap-3">
+                  <Button
+                    variant="ghost"
+                    onClick={() => window.dispatchEvent(new Event(CHECK_EVENT))}
+                  >
+                    立即检查
+                  </Button>
+                  <Toggle on={autoCheck} onClick={() => setAutoCheck(v => !v)} />
+                </div>
+              </Row>
             </Card>
           </section>
 

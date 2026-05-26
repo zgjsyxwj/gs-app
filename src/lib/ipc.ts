@@ -10,8 +10,10 @@
  */
 import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
-import { check as checkUpdater, type Update } from "@tauri-apps/plugin-updater";
+import { check as checkUpdater, type Update, type DownloadEvent } from "@tauri-apps/plugin-updater";
 import { relaunch } from "@tauri-apps/plugin-process";
+
+export type UpdateDownloadEvent = DownloadEvent;
 
 export type SidecarStatus = {
   connected: boolean;
@@ -90,6 +92,7 @@ export const ipc = {
   revealInFolder:   (path: string)           => invoke<void>("reveal_in_folder", { path }),
   zipFiles:         (filePaths: string[], dstZip: string) =>
                                                 invoke<string>("zip_files", { filePaths, dstZip }),
+  openUrl:          (url: string)            => invoke<void>("open_url", { url }),
 
   onRunEvent(cb: (ev: RunEvent) => void): Promise<UnlistenFn> {
     return listen<RunEvent>("run:event", e => cb(e.payload));
@@ -108,9 +111,9 @@ export const ipc = {
     };
   },
 
-  async installAndRelaunch(): Promise<void> {
+  async installAndRelaunch(onProgress?: (e: UpdateDownloadEvent) => void): Promise<void> {
     if (!pendingUpdate) throw new Error("no pending update — call checkForUpdate first");
-    await pendingUpdate.downloadAndInstall();
+    await pendingUpdate.downloadAndInstall(onProgress);
     await relaunch();
   },
 };

@@ -258,6 +258,39 @@ pub async fn reveal_in_folder(path: String) -> Result<(), String> {
     open_in_os_file_manager(&p).map_err(|e| e.to_string())
 }
 
+// Open an https URL in the user's default browser. Used as the updater
+// fallback: when reqwest can't reach GitHub's release CDN (common on CN
+// networks), the user can still download the installer through their own
+// browser/VPN. Restricted to https to avoid this becoming a generic
+// shell-out for arbitrary schemes.
+#[tauri::command]
+pub async fn open_url(url: String) -> Result<(), String> {
+    if !url.starts_with("https://") {
+        return Err("only https URLs are allowed".to_string());
+    }
+    open_url_in_browser(&url).map_err(|e| e.to_string())
+}
+
+fn open_url_in_browser(url: &str) -> std::io::Result<()> {
+    #[cfg(target_os = "macos")]
+    {
+        std::process::Command::new("open").arg(url).status()?;
+    }
+    #[cfg(target_os = "windows")]
+    {
+        // Empty "" is the window title arg — without it `start` treats the
+        // URL itself as the title and opens nothing.
+        std::process::Command::new("cmd")
+            .args(["/c", "start", "", url])
+            .status()?;
+    }
+    #[cfg(target_os = "linux")]
+    {
+        std::process::Command::new("xdg-open").arg(url).status()?;
+    }
+    Ok(())
+}
+
 fn open_in_os_file_manager(path: &std::path::Path) -> std::io::Result<()> {
     #[cfg(target_os = "macos")]
     {
