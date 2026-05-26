@@ -96,6 +96,7 @@ export const ipc = {
   startRun: (args: RunStartArgs) => invoke<string>("start_run", { args }), // returns runId
   cancelRun: (runId: string) => invoke<void>("cancel_run", { runId }),
   payslipScan: (dir: string) => invoke<PayslipScan>("payslip_scan", { dir }),
+  payrollScan: (path: string) => invoke<string[]>("payroll_scan", { path }),
   revealInFolder: (path: string) => invoke<void>("reveal_in_folder", { path }),
   zipFiles: (filePaths: string[], dstZip: string) =>
     invoke<string>("zip_files", { filePaths, dstZip }),

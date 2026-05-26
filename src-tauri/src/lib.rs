@@ -30,6 +30,7 @@ pub fn run() {
             commands::start_run,
             commands::cancel_run,
             commands::payslip_scan,
+            commands::payroll_scan,
             commands::reveal_in_folder,
             commands::zip_files,
             commands::open_url,

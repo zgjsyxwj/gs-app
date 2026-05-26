@@ -400,6 +400,58 @@ fn unique_entry_name(base: &str, seen: &mut std::collections::HashSet<String>) -
     unreachable!()
 }
 
+// ─────────────────────────── Payroll sheet scan ───────────────────────────
+//
+// VA-PAY needs to validate that the supplier xlsx actually contains the sheets
+// the split map expects. .xlsx is a zip; sheet names live in `xl/workbook.xml`
+// as `<sheet name="..." .../>`. We reuse the existing `zip` dep and do a
+// minimal string scan rather than pulling in a real XML / xlsx parser — this
+// command only reads names, not cells.
+
+#[tauri::command]
+pub async fn payroll_scan(path: String) -> Result<Vec<String>, String> {
+    use std::io::Read;
+    let file = std::fs::File::open(&path).map_err(|e| format!("打开失败：{e}"))?;
+    let mut archive = zip::ZipArchive::new(file).map_err(|_| "不是有效的 xlsx 文件".to_string())?;
+    let mut xml = String::new();
+    archive
+        .by_name("xl/workbook.xml")
+        .map_err(|_| "不是有效的 xlsx（缺少 workbook.xml）".to_string())?
+        .read_to_string(&mut xml)
+        .map_err(|e| e.to_string())?;
+    Ok(extract_sheet_names(&xml))
+}
+
+fn extract_sheet_names(xml: &str) -> Vec<String> {
+    let mut names = Vec::new();
+    let bytes = xml.as_bytes();
+    let mut i = 0usize;
+    while i + 7 < bytes.len() {
+        // Match "<sheet " or "<sheet\t" — but not "<sheets>" or "<sheetData>".
+        if &bytes[i..i + 6] == b"<sheet" && matches!(bytes[i + 6], b' ' | b'\t' | b'\n' | b'\r') {
+            let end = bytes[i..]
+                .iter()
+                .position(|&b| b == b'>')
+                .map(|p| i + p)
+                .unwrap_or(bytes.len());
+            let tag = &xml[i..end];
+            if let Some(name) = extract_attr(tag, "name") {
+                names.push(name);
+            }
+            i = end;
+        }
+        i += 1;
+    }
+    names
+}
+
+fn extract_attr(tag: &str, attr: &str) -> Option<String> {
+    let needle = format!("{attr}=\"");
+    let start = tag.find(&needle)? + needle.len();
+    let end = tag[start..].find('"')? + start;
+    Some(tag[start..end].to_string())
+}
+
 #[tauri::command]
 pub async fn payslip_scan(dir: String) -> Result<PayslipScan, String> {
     let path = PathBuf::from(&dir);
