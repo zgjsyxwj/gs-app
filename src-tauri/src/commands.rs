@@ -193,18 +193,25 @@ pub struct PayslipScan {
 
 fn month_num(mon: &str) -> Option<u8> {
     Some(match mon {
-        "Jan" => 1, "Feb" => 2, "Mar" => 3, "Apr" => 4,
-        "May" => 5, "Jun" => 6, "Jul" => 7, "Aug" => 8,
-        "Sep" => 9, "Oct" => 10, "Nov" => 11, "Dec" => 12,
+        "Jan" => 1,
+        "Feb" => 2,
+        "Mar" => 3,
+        "Apr" => 4,
+        "May" => 5,
+        "Jun" => 6,
+        "Jul" => 7,
+        "Aug" => 8,
+        "Sep" => 9,
+        "Oct" => 10,
+        "Nov" => 11,
+        "Dec" => 12,
         _ => return None,
     })
 }
 
 fn parse_payslip_filename(name: &str) -> Option<PayslipRow> {
     // Case-insensitive .pdf suffix — supplier files sometimes ship as .PDF.
-    let stem = if name.len() >= 4
-        && name[name.len() - 4..].eq_ignore_ascii_case(".pdf")
-    {
+    let stem = if name.len() >= 4 && name[name.len() - 4..].eq_ignore_ascii_case(".pdf") {
         &name[..name.len() - 4]
     } else {
         return None;
@@ -218,12 +225,16 @@ fn parse_payslip_filename(name: &str) -> Option<PayslipRow> {
         return None;
     }
     if code.is_empty()
-        || !code.chars().all(|c| c.is_ascii_uppercase() || c.is_ascii_digit())
+        || !code
+            .chars()
+            .all(|c| c.is_ascii_uppercase() || c.is_ascii_digit())
     {
         return None;
     }
     if slug.is_empty()
-        || !slug.chars().all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-')
+        || !slug
+            .chars()
+            .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-')
     {
         return None;
     }
@@ -321,7 +332,9 @@ fn open_in_os_file_manager(path: &std::path::Path) -> std::io::Result<()> {
         } else {
             path
         };
-        std::process::Command::new("xdg-open").arg(target).status()?;
+        std::process::Command::new("xdg-open")
+            .arg(target)
+            .status()?;
     }
     Ok(())
 }
@@ -342,9 +355,8 @@ pub async fn zip_files(file_paths: Vec<String>, dst_zip: String) -> Result<Strin
     let file = std::fs::File::create(&dst).map_err(|e| e.to_string())?;
 
     let mut writer = zip::ZipWriter::new(file);
-    let options: zip::write::SimpleFileOptions =
-        zip::write::SimpleFileOptions::default()
-            .compression_method(zip::CompressionMethod::Deflated);
+    let options: zip::write::SimpleFileOptions = zip::write::SimpleFileOptions::default()
+        .compression_method(zip::CompressionMethod::Deflated);
 
     // Add files in the given order (caller controls ordering via the array).
     // Duplicate basenames are disambiguated with a numeric suffix so the zip
@@ -403,7 +415,10 @@ pub async fn payslip_scan(dir: String) -> Result<PayslipScan, String> {
     let mut total_bytes: u64 = 0;
     for e in entries {
         let p = e.path();
-        if p.extension().and_then(|x| x.to_str()).map(|s| s.to_ascii_lowercase()).as_deref()
+        if p.extension()
+            .and_then(|x| x.to_str())
+            .map(|s| s.to_ascii_lowercase())
+            .as_deref()
             != Some("pdf")
         {
             continue;
@@ -422,5 +437,9 @@ pub async fn payslip_scan(dir: String) -> Result<PayslipScan, String> {
             None => skipped.push(name),
         }
     }
-    Ok(PayslipScan { rows, skipped, total_bytes })
+    Ok(PayslipScan {
+        rows,
+        skipped,
+        total_bytes,
+    })
 }
