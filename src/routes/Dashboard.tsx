@@ -1,7 +1,9 @@
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { TASKS } from "@/tasks/registry";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
+import { ipc } from "@/lib/ipc";
 import { cn } from "@/lib/utils";
 
 // Mock telemetry — replace with sidecar data once `ipc.recentRuns()` lands.
@@ -30,7 +32,18 @@ function formatDateZh(d: Date) {
   return `${d.getFullYear()} 年 ${d.getMonth() + 1} 月 ${d.getDate()} 日 · 星期${WEEKDAY[d.getDay()]}`;
 }
 
+function greetingZh(h: number) {
+  if (h >= 5 && h < 11) return "早上好";
+  if (h >= 11 && h < 13) return "中午好";
+  if (h >= 13 && h < 18) return "下午好";
+  return "该休息了";
+}
+
 export default function Dashboard() {
+  const [username, setUsername] = useState("");
+  useEffect(() => {
+    ipc.systemUsername().then(setUsername).catch(() => setUsername(""));
+  }, []);
   return (
     <div className="flex h-full min-h-0 flex-col">
       {/* header */}
@@ -39,7 +52,9 @@ export default function Dashboard() {
           {formatDateZh(new Date())}
         </div>
         <div className="mt-1.5 flex items-baseline justify-between">
-          <h1 className="m-0 text-[22px] font-semibold tracking-[-0.01em]">下午好，Yuxin</h1>
+          <h1 className="m-0 text-[22px] font-semibold tracking-[-0.01em]">
+            {greetingZh(new Date().getHours())}{username && `，${username}`}
+          </h1>
           <div className="text-[12px] text-ink-50">
             本月已处理 <span className="font-mono font-semibold text-ink">{MONTH_STATS.runs}</span> 个任务
             <span className="mx-2 text-ink-30">·</span>

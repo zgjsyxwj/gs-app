@@ -79,6 +79,7 @@ let pendingUpdate: Update | null = null;
 
 export const ipc = {
   listTasks:        ()                       => invoke<TaskDescriptor[]>("list_tasks"),
+  systemUsername:   ()                       => invoke<string>("system_username"),
   sidecarStatus:    ()                       => invoke<SidecarStatus>("sidecar_status"),
   restartSidecar:   ()                       => invoke<void>("sidecar_restart"),
   pickFile:         (filters?: string[])     => invoke<string | null>("pick_file", { filters }),

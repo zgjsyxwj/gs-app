@@ -22,12 +22,16 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             commands::list_tasks,
+            commands::system_username,
             commands::sidecar_status,
             commands::sidecar_restart,
             commands::pick_file,
             commands::pick_folder,
             commands::start_run,
             commands::cancel_run,
+            commands::payslip_scan,
+            commands::reveal_in_folder,
+            commands::zip_files,
         ])
         .run(tauri::generate_context!())
         .expect("error while running pivot-desk");

@@ -61,8 +61,8 @@ pub async fn list_tasks() -> Vec<TaskDescriptor> {
             "va-vn-ps",
             "VA-VN-PS",
             "瓦里安越南-Payslip 处理",
-            "批量生成员工 PDF Payslip、按身份证号加密",
-            &["xlsx"],
+            "复制供应商 PDF · 按 {code}_{YYYYMM}.pdf 重命名 · 清除底部水印",
+            &["folder"],
         ),
     ]
 }
@@ -84,6 +84,15 @@ pub struct SidecarStatus {
     pub python_version: String,
     pub pid: Option<u32>,
     pub mem_bytes: u64,
+}
+
+#[tauri::command]
+pub fn system_username() -> String {
+    #[cfg(windows)]
+    let key = "USERNAME";
+    #[cfg(not(windows))]
+    let key = "USER";
+    std::env::var(key).unwrap_or_default()
 }
 
 #[tauri::command]
@@ -152,4 +161,233 @@ pub async fn cancel_run(run_id: String) -> Result<(), String> {
     sidecar::cancel_run(&run_id)
         .await
         .map_err(|e| e.to_string())
+}
+
+// ─────────────────────────── Payslip scan ───────────────────────────
+//
+// VA-VN-PS needs a cheap directory listing BEFORE the task runs so the UI
+// can render the comparison list (original → renamed). We do this in Rust
+// rather than via the sidecar streaming protocol because it's a single
+// synchronous response with no progress to report. The Python task is still
+// the authority on actual file processing — this command only inspects
+// filenames.
+
+#[derive(Serialize)]
+pub struct PayslipRow {
+    pub code: String,
+    pub slug: String,
+    pub mon: String,
+    pub year: String,
+    pub period_num: String,
+    pub orig_name: String,
+    pub new_name: String,
+    pub bytes: u64,
+}
+
+#[derive(Serialize)]
+pub struct PayslipScan {
+    pub rows: Vec<PayslipRow>,
+    pub skipped: Vec<String>,
+    pub total_bytes: u64,
+}
+
+fn month_num(mon: &str) -> Option<u8> {
+    Some(match mon {
+        "Jan" => 1, "Feb" => 2, "Mar" => 3, "Apr" => 4,
+        "May" => 5, "Jun" => 6, "Jul" => 7, "Aug" => 8,
+        "Sep" => 9, "Oct" => 10, "Nov" => 11, "Dec" => 12,
+        _ => return None,
+    })
+}
+
+fn parse_payslip_filename(name: &str) -> Option<PayslipRow> {
+    // Case-insensitive .pdf suffix — supplier files sometimes ship as .PDF.
+    let stem = if name.len() >= 4
+        && name[name.len() - 4..].eq_ignore_ascii_case(".pdf")
+    {
+        &name[..name.len() - 4]
+    } else {
+        return None;
+    };
+    let (left, period) = stem.rsplit_once("_payslip_for_")?;
+    let (code, slug) = left.split_once('-')?;
+    let (mon, year_str) = period.split_once('-')?;
+    let month = month_num(mon)?;
+    let year: u32 = year_str.parse().ok()?;
+    if !(2000..=2999).contains(&year) {
+        return None;
+    }
+    if code.is_empty()
+        || !code.chars().all(|c| c.is_ascii_uppercase() || c.is_ascii_digit())
+    {
+        return None;
+    }
+    if slug.is_empty()
+        || !slug.chars().all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-')
+    {
+        return None;
+    }
+    let period_num = format!("{year_str}{month:02}");
+    Some(PayslipRow {
+        code: code.to_string(),
+        slug: slug.to_string(),
+        mon: mon.to_string(),
+        year: year_str.to_string(),
+        new_name: format!("{code}_{period_num}.pdf"),
+        period_num,
+        orig_name: name.to_string(),
+        bytes: 0,
+    })
+}
+
+// ─────────────────────────── Reveal in folder / Zip folder ───────────────────
+//
+// Both helpers serve the Payslip "completed" footer:
+//   · "在文件夹中显示" → reveal_in_folder(outDir)
+//   · "打包 ZIP"       → zip_folder(outDir, outDir + ".zip") then reveal the zip
+// We invoke OS file managers via std::process::Command directly (not the shell
+// plugin) — no capability change required, since the security boundary is the
+// Tauri command surface that already gates the path.
+
+#[tauri::command]
+pub async fn reveal_in_folder(path: String) -> Result<(), String> {
+    let p = PathBuf::from(&path);
+    if !p.exists() {
+        return Err(format!("路径不存在：{path}"));
+    }
+    open_in_os_file_manager(&p).map_err(|e| e.to_string())
+}
+
+fn open_in_os_file_manager(path: &std::path::Path) -> std::io::Result<()> {
+    #[cfg(target_os = "macos")]
+    {
+        // `open -R <file>` highlights a file; `open <folder>` opens a folder.
+        let mut cmd = std::process::Command::new("open");
+        if path.is_file() {
+            cmd.arg("-R");
+        }
+        cmd.arg(path).status()?;
+    }
+    #[cfg(target_os = "windows")]
+    {
+        // `explorer.exe /select,<file>` highlights a file; bare path opens dir.
+        let mut cmd = std::process::Command::new("explorer.exe");
+        if path.is_file() {
+            // /select expects path as a separate arg per Win32 convention.
+            cmd.arg(format!("/select,{}", path.display()));
+        } else {
+            cmd.arg(path);
+        }
+        cmd.status()?;
+    }
+    #[cfg(target_os = "linux")]
+    {
+        // xdg-open has no "select" — fall back to opening the parent dir.
+        let target = if path.is_file() {
+            path.parent().unwrap_or(path)
+        } else {
+            path
+        };
+        std::process::Command::new("xdg-open").arg(target).status()?;
+    }
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn zip_files(file_paths: Vec<String>, dst_zip: String) -> Result<String, String> {
+    use std::io::Write;
+
+    if file_paths.is_empty() {
+        return Err("没有可打包的文件".to_string());
+    }
+    let dst = PathBuf::from(&dst_zip);
+    if let Some(parent) = dst.parent() {
+        if !parent.exists() {
+            return Err(format!("目标目录不存在：{}", parent.display()));
+        }
+    }
+    let file = std::fs::File::create(&dst).map_err(|e| e.to_string())?;
+
+    let mut writer = zip::ZipWriter::new(file);
+    let options: zip::write::SimpleFileOptions =
+        zip::write::SimpleFileOptions::default()
+            .compression_method(zip::CompressionMethod::Deflated);
+
+    // Add files in the given order (caller controls ordering via the array).
+    // Duplicate basenames are disambiguated with a numeric suffix so the zip
+    // stays valid even if two outputs collide.
+    let mut seen: std::collections::HashSet<String> = std::collections::HashSet::new();
+    for p in &file_paths {
+        let path = PathBuf::from(p);
+        if !path.is_file() {
+            return Err(format!("文件不存在或不可读：{p}"));
+        }
+        let base = path
+            .file_name()
+            .and_then(|n| n.to_str())
+            .ok_or_else(|| format!("文件名无法解析：{p}"))?
+            .to_string();
+        let entry_name = unique_entry_name(&base, &mut seen);
+        writer
+            .start_file(entry_name, options)
+            .map_err(|e| e.to_string())?;
+        let data = std::fs::read(&path).map_err(|e| e.to_string())?;
+        writer.write_all(&data).map_err(|e| e.to_string())?;
+    }
+    writer.finish().map_err(|e| e.to_string())?;
+    Ok(dst.to_string_lossy().to_string())
+}
+
+fn unique_entry_name(base: &str, seen: &mut std::collections::HashSet<String>) -> String {
+    if seen.insert(base.to_string()) {
+        return base.to_string();
+    }
+    let (stem, ext) = match base.rfind('.') {
+        Some(i) if i > 0 => (&base[..i], &base[i..]),
+        _ => (base, ""),
+    };
+    for n in 2.. {
+        let candidate = format!("{stem} ({n}){ext}");
+        if seen.insert(candidate.clone()) {
+            return candidate;
+        }
+    }
+    unreachable!()
+}
+
+#[tauri::command]
+pub async fn payslip_scan(dir: String) -> Result<PayslipScan, String> {
+    let path = PathBuf::from(&dir);
+    if !path.is_dir() {
+        return Err(format!("not a directory: {dir}"));
+    }
+    let read = std::fs::read_dir(&path).map_err(|e| e.to_string())?;
+    let mut entries: Vec<_> = read.filter_map(|e| e.ok()).collect();
+    entries.sort_by_key(|e| e.file_name());
+
+    let mut rows = Vec::new();
+    let mut skipped = Vec::new();
+    let mut total_bytes: u64 = 0;
+    for e in entries {
+        let p = e.path();
+        if p.extension().and_then(|x| x.to_str()).map(|s| s.to_ascii_lowercase()).as_deref()
+            != Some("pdf")
+        {
+            continue;
+        }
+        let name = match p.file_name().and_then(|n| n.to_str()) {
+            Some(n) => n.to_string(),
+            None => continue,
+        };
+        match parse_payslip_filename(&name) {
+            Some(mut row) => {
+                let bytes = e.metadata().map(|m| m.len()).unwrap_or(0);
+                row.bytes = bytes;
+                total_bytes += bytes;
+                rows.push(row);
+            }
+            None => skipped.push(name),
+        }
+    }
+    Ok(PayslipScan { rows, skipped, total_bytes })
 }
