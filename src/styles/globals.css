@@ -7,25 +7,29 @@
  * Tweak only here — never inline new colors.
  * ────────────────────────────────────────────── */
 :root {
-  --bg:        60 23% 97%;     /* #FAFAF7 */
-  --panel:     45 25% 94%;     /* #F3F1EB */
-  --card:      0 0% 100%;      /* #FFFFFF */
-  --ink:       0 0% 10%;       /* #1A1A1A */
-  --ink-70:    0 0% 23%;       /* #3A3A3A */
-  --ink-50:    0 0% 42%;       /* #6B6B6B */
-  --ink-30:    39 8% 57%;      /* #9B958A */
-  --ink-10:    43 19% 82%;     /* #D9D4C7 */
-  --rule:      0 0% 90%;       /* rgba(0,0,0,0.08) flattened over bg */
-  --rule-soft: 0 0% 94%;       /* rgba(0,0,0,0.04) flattened over bg */
-  --accent:      157 26% 33%;  /* #3F6B5A */
-  --accent-soft: 147 22% 92%;  /* #E6EFEA */
-  --warn:        37 67% 37%;   /* #9C6B1F */
-  --warn-soft:   40 59% 90%;   /* #F5EBD8 */
-  --err:         13 59% 40%;   /* #A1432A */
-  --highlight:   52 91% 82%;   /* #FBF0A8  pale yellow header chip */
+  --bg: 60 23% 97%; /* #FAFAF7 */
+  --panel: 45 25% 94%; /* #F3F1EB */
+  --card: 0 0% 100%; /* #FFFFFF */
+  --ink: 0 0% 10%; /* #1A1A1A */
+  --ink-70: 0 0% 23%; /* #3A3A3A */
+  --ink-50: 0 0% 42%; /* #6B6B6B */
+  --ink-30: 39 8% 57%; /* #9B958A */
+  --ink-10: 43 19% 82%; /* #D9D4C7 */
+  --rule: 0 0% 90%; /* rgba(0,0,0,0.08) flattened over bg */
+  --rule-soft: 0 0% 94%; /* rgba(0,0,0,0.04) flattened over bg */
+  --accent: 157 26% 33%; /* #3F6B5A */
+  --accent-soft: 147 22% 92%; /* #E6EFEA */
+  --warn: 37 67% 37%; /* #9C6B1F */
+  --warn-soft: 40 59% 90%; /* #F5EBD8 */
+  --err: 13 59% 40%; /* #A1432A */
+  --highlight: 52 91% 82%; /* #FBF0A8  pale yellow header chip */
 }
 
-html, body, #root { height: 100%; }
+html,
+body,
+#root {
+  height: 100%;
+}
 body {
   font-family: theme("fontFamily.sans");
   -webkit-font-smoothing: antialiased;
@@ -34,9 +38,20 @@ body {
 }
 
 /* numeric runs use tabular figures */
-.tabular, .font-mono { font-variant-numeric: tabular-nums; }
+.tabular,
+.font-mono {
+  font-variant-numeric: tabular-nums;
+}
 
 /* native scrollbars: trim the chrome */
-::-webkit-scrollbar { width: 10px; height: 10px; }
-::-webkit-scrollbar-thumb { background: hsl(var(--ink-10)); border-radius: 99px; }
-::-webkit-scrollbar-thumb:hover { background: hsl(var(--ink-30)); }
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--ink-10));
+  border-radius: 99px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--ink-30));
+}

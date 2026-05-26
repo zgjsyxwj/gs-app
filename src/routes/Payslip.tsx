@@ -35,29 +35,31 @@ export default function Payslip() {
   useEffect(() => {
     let off: (() => void) | undefined;
     let cancelled = false;
-    ipc.onRunEvent((ev: RunEvent) => {
-      if (cancelled) return;
-      if (!runIdRef.current || ev.id !== runIdRef.current) return;
-      if (ev.event === "progress") {
-        setProgressDone(ev.done);
-        setCurrentCode(ev.note || null);
-      } else if (ev.event === "log") {
-        // 把 err/warn 收集起来在 UI 顶部呈现 — 这样 sidecar 失败时
-        // 用户能看到原因，而不是面对一个"完成 0 个"的空结果发呆。
-        if (ev.lvl === "err") setErrors(prev => [...prev, ev.msg]);
-        else if (ev.lvl === "warn") setWarnings(prev => [...prev, ev.msg]);
-      } else if (ev.event === "done") {
-        setOutputs(ev.outputs ?? []);
-        setWarnings(prev => [...prev, ...(ev.warnings ?? [])]);
-        setDurationMs(ev.duration_ms ?? null);
-        setRunOk(ev.ok);
-        setMode("done");
-        setCurrentCode(null);
-      }
-    }).then(unlisten => {
-      if (cancelled) unlisten();
-      else off = unlisten;
-    });
+    ipc
+      .onRunEvent((ev: RunEvent) => {
+        if (cancelled) return;
+        if (!runIdRef.current || ev.id !== runIdRef.current) return;
+        if (ev.event === "progress") {
+          setProgressDone(ev.done);
+          setCurrentCode(ev.note || null);
+        } else if (ev.event === "log") {
+          // 把 err/warn 收集起来在 UI 顶部呈现 — 这样 sidecar 失败时
+          // 用户能看到原因，而不是面对一个"完成 0 个"的空结果发呆。
+          if (ev.lvl === "err") setErrors((prev) => [...prev, ev.msg]);
+          else if (ev.lvl === "warn") setWarnings((prev) => [...prev, ev.msg]);
+        } else if (ev.event === "done") {
+          setOutputs(ev.outputs ?? []);
+          setWarnings((prev) => [...prev, ...(ev.warnings ?? [])]);
+          setDurationMs(ev.duration_ms ?? null);
+          setRunOk(ev.ok);
+          setMode("done");
+          setCurrentCode(null);
+        }
+      })
+      .then((unlisten) => {
+        if (cancelled) unlisten();
+        else off = unlisten;
+      });
     return () => {
       cancelled = true;
       off?.();
@@ -116,7 +118,7 @@ export default function Payslip() {
       setRunId(id);
     } catch (e) {
       setMode("ready");
-      setErrors(prev => [...prev, `启动任务失败：${e}`]);
+      setErrors((prev) => [...prev, `启动任务失败：${e}`]);
     }
   }
 
@@ -125,7 +127,7 @@ export default function Payslip() {
     try {
       await ipc.revealInFolder(outDir);
     } catch (e) {
-      setErrors(prev => [...prev, `打开文件夹失败：${e}`]);
+      setErrors((prev) => [...prev, `打开文件夹失败：${e}`]);
     }
   }
 
@@ -145,7 +147,7 @@ export default function Payslip() {
       const created = await ipc.zipFiles(outputs, zipPath);
       await ipc.revealInFolder(created);
     } catch (e) {
-      setErrors(prev => [...prev, `打包失败：${e}`]);
+      setErrors((prev) => [...prev, `打包失败：${e}`]);
     } finally {
       setZipping(false);
     }
@@ -154,8 +156,8 @@ export default function Payslip() {
   // 把 outputs 路径列表化为文件名集合 — 用于判断每一行是否真的产出了文件，
   // 而不是单纯按"任务结束 == 全部成功"来标记。
   const generatedNames = useMemo(
-    () => new Set(outputs.map(p => p.split(/[/\\]/).pop() ?? "")),
-    [outputs],
+    () => new Set(outputs.map((p) => p.split(/[/\\]/).pop() ?? "")),
+    [outputs]
   );
 
   const canRun = !!srcDir && !!outDir && rows.length > 0 && mode === "ready";
@@ -193,12 +195,15 @@ export default function Payslip() {
       )}
       {errors.length > 0 && (
         <div className="mx-8 mt-3 rounded-md border border-err/30 bg-err/10 px-4 py-2 font-mono text-[11.5px] text-err">
-          {errors.length === 1 ? errors[0] : `${errors.length} 条错误 · 最新：${errors[errors.length - 1]}`}
+          {errors.length === 1
+            ? errors[0]
+            : `${errors.length} 条错误 · 最新：${errors[errors.length - 1]}`}
         </div>
       )}
       {mode === "done" && outputs.length === 0 && (
         <div className="mx-8 mt-3 rounded-md border border-warn/30 bg-warn-soft px-4 py-2 text-[12px] text-warn">
-          任务结束，但没有生成任何文件。请检查上方错误，或确认 sidecar 已连接、来源目录可读、输出目录可写。
+          任务结束，但没有生成任何文件。请检查上方错误，或确认 sidecar
+          已连接、来源目录可读、输出目录可写。
         </div>
       )}
       {skipped.length > 0 && (
@@ -215,12 +220,18 @@ export default function Payslip() {
           <FileIcon />
         </div>
         <div className="min-w-0 flex-1">
-          <div className="text-[13.5px] font-semibold text-ink">一键执行：复制 + 重命名 + 去水印</div>
+          <div className="text-[13.5px] font-semibold text-ink">
+            一键执行：复制 + 重命名 + 去水印
+          </div>
           {!srcDir && (
-            <div className="mt-0.5 text-[11.5px] text-ink-50">先选择来源文件夹（供应商 payslip 所在目录）</div>
+            <div className="mt-0.5 text-[11.5px] text-ink-50">
+              先选择来源文件夹（供应商 payslip 所在目录）
+            </div>
           )}
           {srcDir && !outDir && (
-            <div className="mt-0.5 text-[11.5px] text-ink-50">还需选择输出文件夹（CDP 交付目录）</div>
+            <div className="mt-0.5 text-[11.5px] text-ink-50">
+              还需选择输出文件夹（CDP 交付目录）
+            </div>
           )}
         </div>
         <PrimaryRunButton count={rows.length} disabled={!canRun} onClick={handleRun} />
@@ -285,7 +296,11 @@ function Header({ subtitle, code }: { subtitle: string; code: string }) {
 // ─────────────────────────── path field + arrow ───────────────────────────
 
 function PathField({
-  kind, label, path, placeholder, onChange,
+  kind,
+  label,
+  path,
+  placeholder,
+  onChange,
 }: {
   kind: "source" | "output";
   label: string;
@@ -297,7 +312,9 @@ function PathField({
     <div className="flex min-w-0 flex-1 items-center gap-3 rounded-md border border-rule bg-card px-3.5 py-2.5">
       <FieldTag kind={kind} />
       <div className="min-w-0 flex-1">
-        <div className="text-[10.5px] font-semibold uppercase tracking-[0.05em] text-ink-50">{label}</div>
+        <div className="text-[10.5px] font-semibold uppercase tracking-[0.05em] text-ink-50">
+          {label}
+        </div>
         <div
           className={cn(
             "mt-0.5 truncate font-mono text-[12px]",
@@ -320,7 +337,7 @@ function FieldTag({ kind }: { kind: "source" | "output" }) {
     <span
       className={cn(
         "flex-none text-[10.5px] font-semibold uppercase leading-none tracking-[0.8px]",
-        isOutput ? "text-accent" : "text-ink-50",
+        isOutput ? "text-accent" : "text-ink-50"
       )}
     >
       {isOutput ? "输出" : "来源"}
@@ -339,8 +356,14 @@ function PathArrow() {
 // ─────────────────────────── primary button ───────────────────────────
 
 function PrimaryRunButton({
-  count, onClick, disabled
-}: { count: number; onClick: () => void; disabled?: boolean }) {
+  count,
+  onClick,
+  disabled,
+}: {
+  count: number;
+  onClick: () => void;
+  disabled?: boolean;
+}) {
   return (
     <button
       onClick={onClick}
@@ -365,8 +388,19 @@ function PrimaryRunButton({
 type RowKind = "ok" | "run" | "queue" | "missing";
 
 function ComparisonList({
-  rows, mode, progressDone, currentCode, durationMs, warnings,
-  generatedNames, runOk, zipping, canShowFolder, canZip, onShowFolder, onPackageZip,
+  rows,
+  mode,
+  progressDone,
+  currentCode,
+  durationMs,
+  warnings,
+  generatedNames,
+  runOk,
+  zipping,
+  canShowFolder,
+  canZip,
+  onShowFolder,
+  onPackageZip,
 }: {
   rows: PayslipRow[];
   mode: Mode;
@@ -424,16 +458,22 @@ function ComparisonList({
                 kind === "missing" && "bg-err/[0.04]"
               )}
             >
-              <div className="flex justify-center"><StatusGlyph kind={kind} /></div>
+              <div className="flex justify-center">
+                <StatusGlyph kind={kind} />
+              </div>
               <PDFChip name={r.orig_name} variant="original" />
-              <div className="flex items-center justify-center text-ink-30"><ArrowIcon /></div>
-              {kind === "ok"
-                ? <PDFChip name={r.new_name} variant="result" />
-                : kind === "run"
-                  ? <RunningChip name={r.new_name} />
-                  : kind === "missing"
-                    ? <MissingChip name={r.new_name} />
-                    : <PDFChip name={r.new_name} variant="result" ghost />}
+              <div className="flex items-center justify-center text-ink-30">
+                <ArrowIcon />
+              </div>
+              {kind === "ok" ? (
+                <PDFChip name={r.new_name} variant="result" />
+              ) : kind === "run" ? (
+                <RunningChip name={r.new_name} />
+              ) : kind === "missing" ? (
+                <MissingChip name={r.new_name} />
+              ) : (
+                <PDFChip name={r.new_name} variant="result" ghost />
+              )}
             </div>
           );
         })}
@@ -463,13 +503,13 @@ function rowKind(
   progressDone: number,
   currentCode: string | null,
   rows: PayslipRow[],
-  generatedNames: Set<string>,
+  generatedNames: Set<string>
 ): RowKind {
   if (mode === "done") {
     return generatedNames.has(r.new_name) ? "ok" : "missing";
   }
   if (mode === "running") {
-    const idx = rows.findIndex(x => x.code === r.code);
+    const idx = rows.findIndex((x) => x.code === r.code);
     if (currentCode && r.code === currentCode) return "run";
     if (idx < progressDone) return "ok";
     return "queue";
@@ -488,9 +528,18 @@ function ColLabel({ children }: { children: React.ReactNode }) {
 }
 
 function ListFooter({
-  rows, mode, progressDone, durationMs, warnings,
-  generatedCount, runOk, zipping, canShowFolder, canZip,
-  onShowFolder, onPackageZip,
+  rows,
+  mode,
+  progressDone,
+  durationMs,
+  warnings,
+  generatedCount,
+  runOk,
+  zipping,
+  canShowFolder,
+  canZip,
+  onShowFolder,
+  onPackageZip,
 }: {
   rows: PayslipRow[];
   mode: Mode;
@@ -534,9 +583,7 @@ function ListFooter({
                 ? `已生成 ${generatedCount} / ${total} · 缺失 ${missing}`
                 : `已完成 ${generatedCount}`}
             </span>
-            {warnings.length > 0 && (
-              <span className="text-warn"> · {warnings.length} 警告</span>
-            )}
+            {warnings.length > 0 && <span className="text-warn"> · {warnings.length} 警告</span>}
           </>
         )}
       </span>
@@ -552,7 +599,7 @@ function ListFooter({
           <button
             onClick={onShowFolder}
             disabled={!canShowFolder}
-            className="text-accent hover:underline disabled:cursor-not-allowed disabled:opacity-50 disabled:no-underline"
+            className="text-accent hover:underline disabled:cursor-not-allowed disabled:no-underline disabled:opacity-50"
           >
             在文件夹中显示
           </button>
@@ -560,7 +607,7 @@ function ListFooter({
           <button
             onClick={onPackageZip}
             disabled={!canZip || zipping}
-            className="text-accent hover:underline disabled:cursor-not-allowed disabled:opacity-50 disabled:no-underline"
+            className="text-accent hover:underline disabled:cursor-not-allowed disabled:no-underline disabled:opacity-50"
           >
             {zipping ? "打包中…" : "打包 ZIP"}
           </button>
@@ -577,9 +624,13 @@ function StatusGlyph({ kind }: { kind: RowKind }) {
     return (
       <div className="flex h-[18px] w-[18px] items-center justify-center rounded-full bg-accent text-white">
         <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-          <path d="M2 5.4l2 2 4-4.5"
-            stroke="currentColor" strokeWidth="1.8"
-            strokeLinecap="round" strokeLinejoin="round" />
+          <path
+            d="M2 5.4l2 2 4-4.5"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
         </svg>
       </div>
     );
@@ -595,14 +646,19 @@ function StatusGlyph({ kind }: { kind: RowKind }) {
     return (
       <div className="flex h-[18px] w-[18px] items-center justify-center rounded-full bg-err text-white">
         <svg width="9" height="9" viewBox="0 0 10 10" fill="none">
-          <path d="M2 2l6 6M8 2l-6 6"
-            stroke="currentColor" strokeWidth="1.8"
-            strokeLinecap="round" />
+          <path
+            d="M2 2l6 6M8 2l-6 6"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+          />
         </svg>
       </div>
     );
   }
-  return <div className="h-[18px] w-[18px] rounded-full border border-dashed border-ink-10 bg-card" />;
+  return (
+    <div className="h-[18px] w-[18px] rounded-full border border-dashed border-ink-10 bg-card" />
+  );
 }
 
 function MissingChip({ name }: { name: string }) {
@@ -618,8 +674,14 @@ function MissingChip({ name }: { name: string }) {
 }
 
 function PDFChip({
-  name, variant, ghost
-}: { name: string; variant: "original" | "result"; ghost?: boolean }) {
+  name,
+  variant,
+  ghost,
+}: {
+  name: string;
+  variant: "original" | "result";
+  ghost?: boolean;
+}) {
   // 输入和输出都用相同的 err-style 红色 PDF 角标 —— 区分前后靠位置与中间的箭头，
   // 不靠颜色（设计稿调整：成功生成的输出不再用 accent 绿）。
   void variant;
@@ -631,9 +693,7 @@ function PDFChip({
         !ghost && "cursor-pointer hover:border-ink-10"
       )}
     >
-      <div
-        className="flex h-[26px] w-[22px] flex-none items-center justify-center rounded-sm border border-err/30 bg-err/10 font-mono text-[7.5px] font-bold tracking-wide text-err"
-      >
+      <div className="flex h-[26px] w-[22px] flex-none items-center justify-center rounded-sm border border-err/30 bg-err/10 font-mono text-[7.5px] font-bold tracking-wide text-err">
         PDF
       </div>
       <span
@@ -645,10 +705,20 @@ function PDFChip({
         {name}
       </span>
       {!ghost && (
-        <svg width="11" height="11" viewBox="0 0 12 12" fill="none" className="flex-none text-ink-50">
-          <path d="M7 1.5h3.5V5M10.2 1.8L5.5 6.5M5 2.5H2A.5.5 0 001.5 3v7a.5.5 0 00.5.5h7a.5.5 0 00.5-.5V7"
-            stroke="currentColor" strokeWidth="1.1"
-            strokeLinecap="round" strokeLinejoin="round" />
+        <svg
+          width="11"
+          height="11"
+          viewBox="0 0 12 12"
+          fill="none"
+          className="flex-none text-ink-50"
+        >
+          <path
+            d="M7 1.5h3.5V5M10.2 1.8L5.5 6.5M5 2.5H2A.5.5 0 001.5 3v7a.5.5 0 00.5.5h7a.5.5 0 00.5-.5V7"
+            stroke="currentColor"
+            strokeWidth="1.1"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
         </svg>
       )}
     </div>
@@ -672,9 +742,13 @@ function RunningChip({ name }: { name: string }) {
 function ArrowIcon() {
   return (
     <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-      <path d="M2 7h10M8 3l4 4-4 4"
-        stroke="currentColor" strokeWidth="1.3"
-        strokeLinecap="round" strokeLinejoin="round" />
+      <path
+        d="M2 7h10M8 3l4 4-4 4"
+        stroke="currentColor"
+        strokeWidth="1.3"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </svg>
   );
 }
@@ -682,8 +756,12 @@ function ArrowIcon() {
 function FileIcon() {
   return (
     <svg width="18" height="18" viewBox="0 0 20 20" fill="none">
-      <path d="M5 4h7l4 4v8a1 1 0 01-1 1H5a1 1 0 01-1-1V5a1 1 0 011-1z"
-        stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />
+      <path
+        d="M5 4h7l4 4v8a1 1 0 01-1 1H5a1 1 0 01-1-1V5a1 1 0 011-1z"
+        stroke="currentColor"
+        strokeWidth="1.3"
+        strokeLinejoin="round"
+      />
       <path d="M12 4v4h4" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />
     </svg>
   );

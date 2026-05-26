@@ -13,9 +13,7 @@ function NavRow({ to, label, end }: { to: string; label: string; end?: boolean }
       className={({ isActive }) =>
         cn(
           "flex h-7 items-center gap-2.5 rounded-md px-2.5 text-[13px] font-medium",
-          isActive
-            ? "bg-accent/10 text-accent"
-            : "text-ink-70 hover:bg-black/[0.04]"
+          isActive ? "bg-accent/10 text-accent" : "text-ink-70 hover:bg-black/[0.04]"
         )
       }
     >
@@ -33,7 +31,7 @@ function TaskRow({ id, code, short }: { id: string; code: string; short: string 
         cn(
           "flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-[12.5px]",
           isActive
-            ? "border border-rule bg-white text-ink font-semibold shadow-card"
+            ? "border border-rule bg-white font-semibold text-ink shadow-card"
             : "border border-transparent text-ink-70 hover:bg-black/[0.03]"
         )
       }
@@ -58,13 +56,16 @@ function TaskRow({ id, code, short }: { id: string; code: string; short: string 
 export default function Sidebar() {
   const [status, setStatus] = useState<SidecarStatus | null>(null);
   useEffect(() => {
-    ipc.sidecarStatus().then(setStatus).catch(() => setStatus(null));
+    ipc
+      .sidecarStatus()
+      .then(setStatus)
+      .catch(() => setStatus(null));
   }, []);
 
   return (
     <aside className="flex w-[232px] flex-col border-r border-rule bg-panel px-2.5 py-4 text-[13px]">
       <div className="flex items-center gap-2.5 px-2.5 pb-4">
-        <div className="flex h-5.5 w-5.5 h-[22px] w-[22px] items-center justify-center rounded-md bg-accent font-mono text-[12px] font-semibold text-white">
+        <div className="h-5.5 w-5.5 flex h-[22px] w-[22px] items-center justify-center rounded-md bg-accent font-mono text-[12px] font-semibold text-white">
           P
         </div>
         <div className="leading-tight">
@@ -80,7 +81,7 @@ export default function Sidebar() {
         处理任务
       </div>
       <div className="flex flex-col gap-px overflow-hidden">
-        {TASKS.map(t => (
+        {TASKS.map((t) => (
           <TaskRow key={t.id} id={t.id} code={t.code} short={TASK_SHORT[t.id] ?? t.name} />
         ))}
       </div>
@@ -94,9 +95,7 @@ export default function Sidebar() {
             status?.connected ? "bg-[#67B26F]" : "bg-ink-30"
           )}
         />
-        <span className="font-mono">
-          sidecar · {status?.version ?? "–"}
-        </span>
+        <span className="font-mono">sidecar · {status?.version ?? "–"}</span>
       </div>
     </aside>
   );

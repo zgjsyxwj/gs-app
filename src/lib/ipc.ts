@@ -24,18 +24,18 @@ export type SidecarStatus = {
 };
 
 export type TaskDescriptor = {
-  id: string;        // e.g. "va-py"
-  code: string;      // e.g. "VA-PAY"
+  id: string; // e.g. "va-py"
+  code: string; // e.g. "VA-PAY"
   name: string;
   desc: string;
-  inputs: string[];  // ["xlsx", "csv"]
+  inputs: string[]; // ["xlsx", "csv"]
 };
 
 export type TaskOptions = Record<string, string | number | boolean>;
 
 export type RunStartArgs = {
   taskId: string;
-  input: string;       // file or folder path
+  input: string; // file or folder path
   outputDir: string;
   options: TaskOptions;
 };
@@ -48,14 +48,21 @@ export type RunStartArgs = {
 export type RunEvent =
   | { id: string; event: "progress"; done: number; total: number; note?: string }
   | { id: string; event: "log"; t: string; lvl: "info" | "warn" | "ok" | "err"; msg: string }
-  | { id: string; event: "done"; ok: boolean; duration_ms: number; outputs: string[]; warnings: string[] };
+  | {
+      id: string;
+      event: "done";
+      ok: boolean;
+      duration_ms: number;
+      outputs: string[];
+      warnings: string[];
+    };
 
 export type PayslipRow = {
   code: string;
   slug: string;
-  mon: string;          // "Mar"
-  year: string;         // "2026"
-  period_num: string;   // "202603"
+  mon: string; // "Mar"
+  year: string; // "2026"
+  period_num: string; // "202603"
   orig_name: string;
   new_name: string;
   bytes: number;
@@ -80,22 +87,22 @@ export type UpdateInfo = {
 let pendingUpdate: Update | null = null;
 
 export const ipc = {
-  listTasks:        ()                       => invoke<TaskDescriptor[]>("list_tasks"),
-  systemUsername:   ()                       => invoke<string>("system_username"),
-  sidecarStatus:    ()                       => invoke<SidecarStatus>("sidecar_status"),
-  restartSidecar:   ()                       => invoke<void>("sidecar_restart"),
-  pickFile:         (filters?: string[])     => invoke<string | null>("pick_file", { filters }),
-  pickFolder:       ()                       => invoke<string | null>("pick_folder"),
-  startRun:         (args: RunStartArgs)     => invoke<string>("start_run", { args }),   // returns runId
-  cancelRun:        (runId: string)          => invoke<void>("cancel_run", { runId }),
-  payslipScan:      (dir: string)            => invoke<PayslipScan>("payslip_scan", { dir }),
-  revealInFolder:   (path: string)           => invoke<void>("reveal_in_folder", { path }),
-  zipFiles:         (filePaths: string[], dstZip: string) =>
-                                                invoke<string>("zip_files", { filePaths, dstZip }),
-  openUrl:          (url: string)            => invoke<void>("open_url", { url }),
+  listTasks: () => invoke<TaskDescriptor[]>("list_tasks"),
+  systemUsername: () => invoke<string>("system_username"),
+  sidecarStatus: () => invoke<SidecarStatus>("sidecar_status"),
+  restartSidecar: () => invoke<void>("sidecar_restart"),
+  pickFile: (filters?: string[]) => invoke<string | null>("pick_file", { filters }),
+  pickFolder: () => invoke<string | null>("pick_folder"),
+  startRun: (args: RunStartArgs) => invoke<string>("start_run", { args }), // returns runId
+  cancelRun: (runId: string) => invoke<void>("cancel_run", { runId }),
+  payslipScan: (dir: string) => invoke<PayslipScan>("payslip_scan", { dir }),
+  revealInFolder: (path: string) => invoke<void>("reveal_in_folder", { path }),
+  zipFiles: (filePaths: string[], dstZip: string) =>
+    invoke<string>("zip_files", { filePaths, dstZip }),
+  openUrl: (url: string) => invoke<void>("open_url", { url }),
 
   onRunEvent(cb: (ev: RunEvent) => void): Promise<UnlistenFn> {
-    return listen<RunEvent>("run:event", e => cb(e.payload));
+    return listen<RunEvent>("run:event", (e) => cb(e.payload));
   },
 
   async checkForUpdate(): Promise<UpdateInfo> {

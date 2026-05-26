@@ -28,10 +28,10 @@ export function PickerButton({
       disabled={disabled}
       className={cn(
         "inline-flex flex-none items-center gap-[5px] rounded-[5px] border border-ink-10 bg-card",
-        "pl-2 pr-[9px] py-[5px] text-[11px] font-medium leading-none text-accent",
+        "py-[5px] pl-2 pr-[9px] text-[11px] font-medium leading-none text-accent",
         "transition-colors duration-[120ms] hover:border-accent hover:bg-accent-soft",
         "disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-ink-10 disabled:hover:bg-card",
-        className,
+        className
       )}
     >
       {isPath && <PickerFolderIcon />}

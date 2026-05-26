@@ -6,11 +6,11 @@
  * and anywhere else we want a compact label.
  */
 export const TASK_SHORT: Record<string, string> = {
-  "mp-cn":    "微创 · 报销",
-  "ww-au":    "旺旺AU · 报销",
-  "mp-in":    "神通IN · 整理",
-  "va-pay":   "瓦里安 · 拆分",
-  "va-vn-r":  "瓦里安VN · Pyaroll报告",
+  "mp-cn": "微创 · 报销",
+  "ww-au": "旺旺AU · 报销",
+  "mp-in": "神通IN · 整理",
+  "va-pay": "瓦里安 · 拆分",
+  "va-vn-r": "瓦里安VN · Pyaroll报告",
   "va-vn-ps": "瓦里安VN · 工资单",
 };
 

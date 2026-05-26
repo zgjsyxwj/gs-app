@@ -7,23 +7,22 @@ const button = cva(
   {
     variants: {
       variant: {
-        primary:   "bg-accent text-white hover:bg-accent/90",
+        primary: "bg-accent text-white hover:bg-accent/90",
         secondary: "border border-ink-10 bg-white text-ink hover:bg-black/[0.03]",
-        ghost:     "text-ink-70 hover:bg-black/[0.04]",
-        danger:    "bg-err text-white hover:bg-err/90"
+        ghost: "text-ink-70 hover:bg-black/[0.04]",
+        danger: "bg-err text-white hover:bg-err/90",
       },
       size: {
         sm: "h-7 px-2.5",
         md: "h-8 px-3.5",
-        lg: "h-9 px-4"
-      }
+        lg: "h-9 px-4",
+      },
     },
-    defaultVariants: { variant: "primary", size: "md" }
+    defaultVariants: { variant: "primary", size: "md" },
   }
 );
 
-export type ButtonProps =
-  React.ButtonHTMLAttributes<HTMLButtonElement> &
+export type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> &
   VariantProps<typeof button>;
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(

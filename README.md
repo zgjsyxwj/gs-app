@@ -42,14 +42,14 @@ scaffold/
 
 ## 6 项任务
 
-| Code | 名称 |
-|---|---|
-| `MP-CN` | 微创报销数据处理 |
-| `WW-AU` | 旺旺-澳大利亚报销数据处理 |
-| `MP-IN` | 微创神通-印度报销文件整理 |
-| `VA-PAY` | 瓦里安-Payroll 账单拆分 |
-| `VA-VN-R` | 瓦里安越南-Payroll 报告处理 |
-| `VA-VN-PS` | 瓦里安越南-Payslip 处理 |
+| Code       | 名称                        |
+| ---------- | --------------------------- |
+| `MP-CN`    | 微创报销数据处理            |
+| `WW-AU`    | 旺旺-澳大利亚报销数据处理   |
+| `MP-IN`    | 微创神通-印度报销文件整理   |
+| `VA-PAY`   | 瓦里安-Payroll 账单拆分     |
+| `VA-VN-R`  | 瓦里安越南-Payroll 报告处理 |
+| `VA-VN-PS` | 瓦里安越南-Payslip 处理     |
 
 每个任务在 `sidecar/pivot_sidecar/tasks/` 下一个文件，统一继承 `TaskBase`，
 实现 `run(input_path, output_dir, options) -> RunResult`。
@@ -80,6 +80,7 @@ git tag v0.1.0 && git push --tags
 ```
 
 工作流会在两个平台分别：
+
 1. 安装 Python，运行 `sidecar/build.py` 产出对应 target-triple 的二进制
 2. 安装 Node，跑 `pnpm install && pnpm build`
 3. 用 `tauri-apps/tauri-action` 出 `.dmg`（Apple Silicon）/ `.msi`（Windows）
@@ -113,7 +114,8 @@ git tag v0.1.0 && git push --tags
 
 > 这两个弹窗都是**未签名应用的正常表现**，不代表软件有问题。
 > 后续如果需要无弹窗体验，需购买 Apple Developer Program（99 USD/yr）
-> + Authenticode 代码签名证书（70~700 USD/yr）。
+>
+> - Authenticode 代码签名证书（70~700 USD/yr）。
 
 ## 设计文件
 

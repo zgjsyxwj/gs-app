@@ -19,13 +19,17 @@ function Dot({ color, onClick }: { color: string; onClick?: () => void }) {
  */
 export default function TitleBar() {
   const win = (() => {
-    try { return getCurrentWindow(); } catch { return null; }
+    try {
+      return getCurrentWindow();
+    } catch {
+      return null;
+    }
   })();
 
   return (
     <div
       data-tauri-drag-region
-      className="flex h-[38px] flex-shrink-0 items-center border-b border-rule bg-bg select-none"
+      className="flex h-[38px] flex-shrink-0 select-none items-center border-b border-rule bg-bg"
     >
       <div className="flex gap-2 px-3.5" data-tauri-drag-region={false}>
         <Dot color="#D9534F" onClick={() => win?.close()} />
@@ -34,7 +38,7 @@ export default function TitleBar() {
       </div>
       <div
         className={cn(
-          "flex-1 text-center text-[12px] text-ink-50 tracking-[0.2px]",
+          "flex-1 text-center text-[12px] tracking-[0.2px] text-ink-50",
           "pointer-events-none"
         )}
       >

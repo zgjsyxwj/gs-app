@@ -38,9 +38,7 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
-    "externalBin": [
-      "binaries/pivot-sidecar"
-    ],
+    "externalBin": ["binaries/pivot-sidecar"],
     "macOS": {
       "signingIdentity": "-",
       "entitlements": null,

@@ -14,10 +14,10 @@ type Phase = "input" | "configure" | "running" | "done";
 type RunResult = { ok: boolean; durationMs: number; outputs: string[]; warnings: string[] };
 
 const STEPS: { id: Phase; label: string }[] = [
-  { id: "input",     label: "选择输入" },
+  { id: "input", label: "选择输入" },
   { id: "configure", label: "处理选项" },
-  { id: "running",   label: "正在处理" },
-  { id: "done",      label: "处理完成" }
+  { id: "running", label: "正在处理" },
+  { id: "done", label: "处理完成" },
 ];
 
 export default function Task() {
@@ -39,34 +39,40 @@ export default function Task() {
       if (ev.event === "progress") {
         setProgress({ done: ev.done, total: ev.total, note: ev.note ?? "" });
       } else if (ev.event === "log") {
-        setLogs(prev => [...prev, { t: ev.t, lvl: ev.lvl, msg: ev.msg }]);
+        setLogs((prev) => [...prev, { t: ev.t, lvl: ev.lvl, msg: ev.msg }]);
       } else if (ev.event === "done") {
-        setResult({ ok: ev.ok, durationMs: ev.duration_ms, outputs: ev.outputs, warnings: ev.warnings });
-        setProgress(p => ({ ...p, done: p.total }));
+        setResult({
+          ok: ev.ok,
+          durationMs: ev.duration_ms,
+          outputs: ev.outputs,
+          warnings: ev.warnings,
+        });
+        setProgress((p) => ({ ...p, done: p.total }));
       }
     });
-    return () => { off.then(fn => fn()); };
+    return () => {
+      off.then((fn) => fn());
+    };
   }, [runId]);
 
   if (!task) return <div className="p-9 text-ink-50">未找到任务: {taskId}</div>;
 
-  const auto: Phase =
-    result    ? "done"
-    : runId   ? "running"
-    : inputPath ? "configure"
-    : "input";
+  const auto: Phase = result ? "done" : runId ? "running" : inputPath ? "configure" : "input";
   const phase = override ?? auto;
 
   const reachable: Record<Phase, boolean> = {
-    input:     true,
+    input: true,
     configure: !!inputPath,
-    running:   !!runId,
-    done:      !!result
+    running: !!runId,
+    done: !!result,
   };
 
   async function pickFile() {
     const p = await ipc.pickFile(task!.inputs);
-    if (p) { setInputPath(p); setOverride(null); }
+    if (p) {
+      setInputPath(p);
+      setOverride(null);
+    }
   }
   async function pickFolder() {
     const p = await ipc.pickFolder();
@@ -74,18 +80,29 @@ export default function Task() {
   }
   async function startRun() {
     if (!inputPath) return;
-    setLogs([]); setResult(null);
+    setLogs([]);
+    setResult(null);
     runStartRef.current = Date.now();
     const id = await ipc.startRun({
-      taskId: task!.id, input: inputPath, outputDir, options: {}
+      taskId: task!.id,
+      input: inputPath,
+      outputDir,
+      options: {},
     });
-    setRunId(id); setOverride(null);
+    setRunId(id);
+    setOverride(null);
   }
-  function cancel() { if (runId) ipc.cancelRun(runId); }
+  function cancel() {
+    if (runId) ipc.cancelRun(runId);
+  }
   function reset() {
-    setInputPath(null); setRunId(null); setResult(null);
-    setProgress({ done: 0, total: 1, note: "" }); setLogs([]);
-    setOverride("input"); runStartRef.current = null;
+    setInputPath(null);
+    setRunId(null);
+    setResult(null);
+    setProgress({ done: 0, total: 1, note: "" });
+    setLogs([]);
+    setOverride("input");
+    runStartRef.current = null;
   }
 
   return (
@@ -96,7 +113,9 @@ export default function Task() {
         <StepRail
           phase={phase}
           reachable={reachable}
-          onNav={(p) => { if (reachable[p]) setOverride(p); }}
+          onNav={(p) => {
+            if (reachable[p]) setOverride(p);
+          }}
         />
         <div className="min-w-0 overflow-auto px-9 pb-7 pt-5">
           {phase === "input" && (
@@ -117,12 +136,8 @@ export default function Task() {
               onStart={startRun}
             />
           )}
-          {phase === "running" && (
-            <RunningStep progress={progress} logs={logs} onCancel={cancel} />
-          )}
-          {phase === "done" && result && (
-            <DoneStep result={result} onReset={reset} />
-          )}
+          {phase === "running" && <RunningStep progress={progress} logs={logs} onCancel={cancel} />}
+          {phase === "done" && result && <DoneStep result={result} onReset={reset} />}
         </div>
       </div>
     </div>
@@ -157,13 +172,15 @@ function Header({ task, runId }: { task: TaskDescriptor; runId: string | null })
 // ─────────────────────────── step rail ───────────────────────────
 
 function StepRail({
-  phase, reachable, onNav
+  phase,
+  reachable,
+  onNav,
 }: {
   phase: Phase;
   reachable: Record<Phase, boolean>;
   onNav: (p: Phase) => void;
 }) {
-  const idx = STEPS.findIndex(s => s.id === phase);
+  const idx = STEPS.findIndex((s) => s.id === phase);
   return (
     <aside className="flex flex-col gap-1 border-r border-rule bg-panel px-3.5 py-6">
       {STEPS.map((s, i) => {
@@ -184,9 +201,11 @@ function StepRail({
             <span
               className={cn(
                 "text-[12.5px]",
-                state === "current" ? "font-semibold text-ink"
-                  : state === "done" ? "text-ink-70"
-                  : "text-ink-50"
+                state === "current"
+                  ? "font-semibold text-ink"
+                  : state === "done"
+                    ? "text-ink-70"
+                    : "text-ink-50"
               )}
             >
               {s.label}
@@ -198,16 +217,18 @@ function StepRail({
   );
 }
 
-function StepGlyph({
-  state, index
-}: { state: "done" | "current" | "upcoming"; index: number }) {
+function StepGlyph({ state, index }: { state: "done" | "current" | "upcoming"; index: number }) {
   if (state === "done") {
     return (
       <div className="flex h-[18px] w-[18px] flex-none items-center justify-center rounded-full bg-accent text-white">
         <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-          <path d="M2 5.4l2 2 4-4.5"
-            stroke="currentColor" strokeWidth="1.8"
-            strokeLinecap="round" strokeLinejoin="round" />
+          <path
+            d="M2 5.4l2 2 4-4.5"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
         </svg>
       </div>
     );
@@ -229,7 +250,10 @@ function StepGlyph({
 // ─────────────────────────── step 1 · input ───────────────────────────
 
 function InputStep({
-  task, path, onPick, onNext
+  task,
+  path,
+  onPick,
+  onNext,
 }: {
   task: TaskDescriptor;
   path: string | null;
@@ -247,10 +271,12 @@ function InputStep({
         <div className="flex-1">
           <div className="text-[14px] font-semibold text-ink">拖放文件到此处</div>
           <div className="mt-1 text-[12px] text-ink-50">
-            支持 {task.inputs.map(s => "." + s).join(" / ")}
+            支持 {task.inputs.map((s) => "." + s).join(" / ")}
           </div>
         </div>
-        <Button variant="secondary" onClick={onPick}>选择文件</Button>
+        <Button variant="secondary" onClick={onPick}>
+          选择文件
+        </Button>
       </div>
 
       {path && (
@@ -265,7 +291,9 @@ function InputStep({
       )}
 
       <div className="mt-4 flex justify-end">
-        <Button disabled={!path} onClick={onNext}>下一步</Button>
+        <Button disabled={!path} onClick={onNext}>
+          下一步
+        </Button>
       </div>
     </div>
   );
@@ -274,7 +302,12 @@ function InputStep({
 // ─────────────────────────── step 2 · configure ───────────────────────────
 
 function ConfigureStep({
-  task, input, outputDir, onPickFolder, onBack, onStart
+  task,
+  input,
+  outputDir,
+  onPickFolder,
+  onBack,
+  onStart,
 }: {
   task: TaskDescriptor;
   input: string;
@@ -301,7 +334,9 @@ function ConfigureStep({
       </Card>
 
       <div className="mt-4 flex items-center justify-between">
-        <Button variant="ghost" onClick={onBack}>上一步</Button>
+        <Button variant="ghost" onClick={onBack}>
+          上一步
+        </Button>
         <Button onClick={onStart}>开始处理</Button>
       </div>
     </div>
@@ -311,7 +346,9 @@ function ConfigureStep({
 // ─────────────────────────── step 3 · running ───────────────────────────
 
 function RunningStep({
-  progress, logs, onCancel
+  progress,
+  logs,
+  onCancel,
 }: {
   progress: { done: number; total: number; note: string };
   logs: LogLine[];
@@ -326,7 +363,9 @@ function RunningStep({
         <div className="flex items-baseline justify-between">
           <div className="text-[13px] font-semibold">处理中</div>
           <div className="font-mono text-[12px] text-ink-50">
-            <span className="font-semibold text-ink">{progress.done} / {progress.total}</span>
+            <span className="font-semibold text-ink">
+              {progress.done} / {progress.total}
+            </span>
           </div>
         </div>
         <Progress value={pct} className="mt-2.5" />
@@ -338,14 +377,18 @@ function RunningStep({
       <Card className="mt-3.5 overflow-hidden">
         <CardHeader>处理日志</CardHeader>
         <div className="max-h-[320px] overflow-auto px-4 py-2.5 font-mono text-[11.5px] leading-7">
-          {logs.length === 0
-            ? <div className="text-ink-30">等待日志输出 …</div>
-            : logs.map((l, i) => <LogRow key={i} line={l} />)}
+          {logs.length === 0 ? (
+            <div className="text-ink-30">等待日志输出 …</div>
+          ) : (
+            logs.map((l, i) => <LogRow key={i} line={l} />)
+          )}
         </div>
       </Card>
 
       <div className="mt-4 flex justify-end">
-        <Button variant="ghost" onClick={onCancel}>取消处理</Button>
+        <Button variant="ghost" onClick={onCancel}>
+          取消处理
+        </Button>
       </div>
     </div>
   );
@@ -353,9 +396,7 @@ function RunningStep({
 
 // ─────────────────────────── step 4 · done ───────────────────────────
 
-function DoneStep({
-  result, onReset
-}: { result: RunResult; onReset: () => void }) {
+function DoneStep({ result, onReset }: { result: RunResult; onReset: () => void }) {
   return (
     <div>
       <SectionLabel>处理完成</SectionLabel>
@@ -370,13 +411,13 @@ function DoneStep({
           {result.ok ? <CheckIcon /> : <XIcon />}
         </div>
         <div className="min-w-0 flex-1">
-          <div className="text-[16px] font-semibold">
-            {result.ok ? "处理完成" : "处理失败"}
-          </div>
+          <div className="text-[16px] font-semibold">{result.ok ? "处理完成" : "处理失败"}</div>
           <div className="mt-0.5 text-[12.5px] text-ink-50">
-            输出 <span className="font-mono font-semibold text-ink">{result.outputs.length}</span> 个文件
+            输出 <span className="font-mono font-semibold text-ink">{result.outputs.length}</span>{" "}
+            个文件
             <span className="mx-2 text-ink-30">·</span>
-            用时 <span className="font-mono font-semibold text-ink">{formatMs(result.durationMs)}</span>
+            用时{" "}
+            <span className="font-mono font-semibold text-ink">{formatMs(result.durationMs)}</span>
             {result.warnings.length > 0 && (
               <>
                 <span className="mx-2 text-ink-30">·</span>
@@ -391,7 +432,9 @@ function DoneStep({
 
       {result.outputs.length > 0 && (
         <>
-          <div className="mt-6"><SectionLabel>输出文件</SectionLabel></div>
+          <div className="mt-6">
+            <SectionLabel>输出文件</SectionLabel>
+          </div>
           <Card className="mt-2.5 overflow-hidden">
             {result.outputs.map((p, i) => (
               <div
@@ -416,9 +459,13 @@ function DoneStep({
 
       {result.warnings.length > 0 && (
         <>
-          <div className="mt-6"><SectionLabel>{result.warnings.length} 条警告</SectionLabel></div>
+          <div className="mt-6">
+            <SectionLabel>{result.warnings.length} 条警告</SectionLabel>
+          </div>
           <Card className="mt-2.5 border-warn/30 bg-warn-soft px-4 py-3 font-mono text-[11.5px] leading-7 text-warn">
-            {result.warnings.map((w, i) => <div key={i}>warn · {w}</div>)}
+            {result.warnings.map((w, i) => (
+              <div key={i}>warn · {w}</div>
+            ))}
           </Card>
         </>
       )}
@@ -437,13 +484,26 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 }
 
 function Field({
-  label, value, mono, action
-}: { label: string; value: string; mono?: boolean; action?: React.ReactNode }) {
+  label,
+  value,
+  mono,
+  action,
+}: {
+  label: string;
+  value: string;
+  mono?: boolean;
+  action?: React.ReactNode;
+}) {
   return (
     <div className="border-b border-rule-soft py-2 last:border-b-0">
       <div className="text-[11px] text-ink-50">{label}</div>
       <div className="mt-1 flex items-center justify-between gap-3">
-        <div className={cn("min-w-0 flex-1 truncate text-[12.5px] text-ink", mono && "font-mono text-[12px]")}>
+        <div
+          className={cn(
+            "min-w-0 flex-1 truncate text-[12.5px] text-ink",
+            mono && "font-mono text-[12px]"
+          )}
+        >
           {value}
         </div>
         {action}
@@ -467,10 +527,13 @@ function LogRow({ line }: { line: LogLine }) {
       <span
         className={cn(
           "w-9 flex-none",
-          line.lvl === "warn" ? "text-warn"
-            : line.lvl === "ok"  ? "text-accent"
-            : line.lvl === "err" ? "text-err"
-            : "text-ink-50"
+          line.lvl === "warn"
+            ? "text-warn"
+            : line.lvl === "ok"
+              ? "text-accent"
+              : line.lvl === "err"
+                ? "text-err"
+                : "text-ink-50"
         )}
       >
         {line.lvl}
@@ -489,9 +552,13 @@ function extOf(path: string): string {
 function UploadIcon() {
   return (
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-      <path d="M12 3v12m0 0l-4-4m4 4l4-4M5 21h14"
-        stroke="currentColor" strokeWidth="1.5"
-        strokeLinecap="round" strokeLinejoin="round" />
+      <path
+        d="M12 3v12m0 0l-4-4m4 4l4-4M5 21h14"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </svg>
   );
 }
@@ -499,9 +566,13 @@ function UploadIcon() {
 function CheckIcon() {
   return (
     <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
-      <path d="M5 11.5l4 4 8.5-9"
-        stroke="currentColor" strokeWidth="2"
-        strokeLinecap="round" strokeLinejoin="round" />
+      <path
+        d="M5 11.5l4 4 8.5-9"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </svg>
   );
 }
@@ -509,8 +580,7 @@ function CheckIcon() {
 function XIcon() {
   return (
     <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-      <path d="M5 5l10 10M15 5L5 15"
-        stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      <path d="M5 5l10 10M15 5L5 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
     </svg>
   );
 }

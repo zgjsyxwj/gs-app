@@ -7,18 +7,21 @@ const badge = cva(
     variants: {
       tone: {
         neutral: "border-rule bg-white text-ink-70",
-        accent:  "border-accent/30 bg-accent-soft text-accent",
-        warn:    "border-warn/30 bg-warn-soft text-warn",
-        err:     "border-err/30 bg-err/10 text-err",
-        ok:      "border-accent/30 bg-accent-soft text-accent"
-      }
+        accent: "border-accent/30 bg-accent-soft text-accent",
+        warn: "border-warn/30 bg-warn-soft text-warn",
+        err: "border-err/30 bg-err/10 text-err",
+        ok: "border-accent/30 bg-accent-soft text-accent",
+      },
     },
-    defaultVariants: { tone: "neutral" }
+    defaultVariants: { tone: "neutral" },
   }
 );
 
 export function Badge({
-  className, tone, children, ...rest
+  className,
+  tone,
+  children,
+  ...rest
 }: React.HTMLAttributes<HTMLSpanElement> & VariantProps<typeof badge>) {
   return (
     <span className={cn(badge({ tone }), className)} {...rest}>
