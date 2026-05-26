@@ -1,0 +1,16 @@
+node_modules
+dist
+src-tauri/target
+src-tauri/binaries
+sidecar/.venv
+sidecar/build
+sidecar/dist
+sidecar/*.egg-info
+pnpm-lock.yaml
+*.tsbuildinfo
+
+# CI workflows — YAML indent is brittle, leave alone
+.github
+
+# Cloudflare worker — separate sub-project
+worker
