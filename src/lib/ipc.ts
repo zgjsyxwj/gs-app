@@ -38,10 +38,32 @@ export type RunStartArgs = {
   options: TaskOptions;
 };
 
+// The sidecar emits events in snake_case (see ipc.py). Rust forwards verbatim,
+// so the payload that reaches `onRunEvent` is keyed by sidecar field names —
+// `done`, `total`, `note`, `duration_ms`, etc. Discriminator is `event`. Other
+// event kinds (e.g. "hello", "error") are filtered by Rust or simply ignored
+// by handlers — the union below covers everything callers consume.
 export type RunEvent =
-  | { kind: "progress"; runId: string; done: number; total: number; note?: string }
-  | { kind: "log"; runId: string; t: string; lvl: "info" | "warn" | "ok" | "err"; msg: string }
-  | { kind: "done"; runId: string; ok: boolean; durationMs: number; outputs: string[]; warnings: string[] };
+  | { id: string; event: "progress"; done: number; total: number; note?: string }
+  | { id: string; event: "log"; t: string; lvl: "info" | "warn" | "ok" | "err"; msg: string }
+  | { id: string; event: "done"; ok: boolean; duration_ms: number; outputs: string[]; warnings: string[] };
+
+export type PayslipRow = {
+  code: string;
+  slug: string;
+  mon: string;          // "Mar"
+  year: string;         // "2026"
+  period_num: string;   // "202603"
+  orig_name: string;
+  new_name: string;
+  bytes: number;
+};
+
+export type PayslipScan = {
+  rows: PayslipRow[];
+  skipped: string[];
+  total_bytes: number;
+};
 
 export type UpdateInfo = {
   available: boolean;
@@ -63,6 +85,10 @@ export const ipc = {
   pickFolder:       ()                       => invoke<string | null>("pick_folder"),
   startRun:         (args: RunStartArgs)     => invoke<string>("start_run", { args }),   // returns runId
   cancelRun:        (runId: string)          => invoke<void>("cancel_run", { runId }),
+  payslipScan:      (dir: string)            => invoke<PayslipScan>("payslip_scan", { dir }),
+  revealInFolder:   (path: string)           => invoke<void>("reveal_in_folder", { path }),
+  zipFiles:         (filePaths: string[], dstZip: string) =>
+                                                invoke<string>("zip_files", { filePaths, dstZip }),
 
   onRunEvent(cb: (ev: RunEvent) => void): Promise<UnlistenFn> {
     return listen<RunEvent>("run:event", e => cb(e.payload));

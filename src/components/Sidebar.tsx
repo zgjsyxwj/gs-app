@@ -1,19 +1,9 @@
 import { NavLink } from "react-router-dom";
 import { TASKS } from "@/tasks/registry";
+import { TASK_SHORT } from "@/tasks/labels";
 import { cn } from "@/lib/utils";
 import { useEffect, useState } from "react";
 import { ipc, type SidecarStatus } from "@/lib/ipc";
-
-// Sidebar-only display names (mirrors `short` in design_refs/shared.jsx).
-// Registry mirrors the sidecar contract and can't carry UI-only fields.
-const TASK_SHORT: Record<string, string> = {
-  "mp-cn":    "微创 · 报销",
-  "ww-au":    "旺旺AU · 报销",
-  "mp-in":    "神通IN · 整理",
-  "va-pay":   "瓦里安 · 拆分",
-  "va-vn-r":  "瓦里安VN · Pyaroll报告",
-  "va-vn-ps": "瓦里安VN · 工资单"
-};
 
 function NavRow({ to, label, end }: { to: string; label: string; end?: boolean }) {
   return (

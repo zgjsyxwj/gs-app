@@ -45,8 +45,8 @@ export const TASKS: TaskDescriptor[] = [
     id: "va-vn-ps",
     code: "VA-VN-PS",
     name: "瓦里安越南-Payslip 处理",
-    desc: "批量生成员工 PDF Payslip、按身份证号加密",
-    inputs: ["xlsx"]
+    desc: "复制供应商 PDF · 按 {code}_{YYYYMM}.pdf 重命名 · 清除底部水印",
+    inputs: ["folder"]
   }
 ];
 

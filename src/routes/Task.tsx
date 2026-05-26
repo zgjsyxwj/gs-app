@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/Button";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Progress } from "@/components/ui/Progress";
 import { Badge } from "@/components/ui/Badge";
+import { PickerButton } from "@/components/ui/PickerButton";
 import { cn, formatMs } from "@/lib/utils";
 
 type LogLine = { t: string; lvl: "info" | "warn" | "ok" | "err"; msg: string };
@@ -34,13 +35,13 @@ export default function Task() {
 
   useEffect(() => {
     const off = ipc.onRunEvent((ev: RunEvent) => {
-      if (runId && "runId" in ev && ev.runId !== runId) return;
-      if (ev.kind === "progress") {
+      if (runId && ev.id && ev.id !== runId) return;
+      if (ev.event === "progress") {
         setProgress({ done: ev.done, total: ev.total, note: ev.note ?? "" });
-      } else if (ev.kind === "log") {
+      } else if (ev.event === "log") {
         setLogs(prev => [...prev, { t: ev.t, lvl: ev.lvl, msg: ev.msg }]);
-      } else if (ev.kind === "done") {
-        setResult({ ok: ev.ok, durationMs: ev.durationMs, outputs: ev.outputs, warnings: ev.warnings });
+      } else if (ev.event === "done") {
+        setResult({ ok: ev.ok, durationMs: ev.duration_ms, outputs: ev.outputs, warnings: ev.warnings });
         setProgress(p => ({ ...p, done: p.total }));
       }
     });
@@ -292,11 +293,7 @@ function ConfigureStep({
           label="输出文件夹"
           value={outputDir}
           mono
-          action={
-            <button onClick={onPickFolder} className="text-[11px] text-ink-50 hover:text-ink">
-              更改
-            </button>
-          }
+          action={<PickerButton variant="path" onClick={onPickFolder} />}
         />
         <div className="mt-3 border-t border-rule-soft pt-3 text-[11.5px] text-ink-50">
           <span className="font-mono">{task.code}</span> 暂无额外选项 — 使用默认处理流程
