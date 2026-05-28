@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 type Mode = "ready" | "running" | "done";
 
 export default function Payslip() {
-  const task = taskById("va-vn-ps")!;
+  const task = taskById("va-vn-payslip-rename")!;
 
   const [srcDir, setSrcDir] = useState<string | null>(null);
   const [outDir, setOutDir] = useState<string | null>(null);
@@ -110,7 +110,7 @@ export default function Payslip() {
     setRunOk(null);
     try {
       const id = await ipc.startRun({
-        taskId: "va-vn-ps",
+        taskId: "va-vn-payslip-rename",
         input: srcDir,
         outputDir: outDir,
         options: {},
@@ -139,7 +139,7 @@ export default function Payslip() {
     const sep = outDir.includes("\\") ? "\\" : "/";
     const trimmed = outDir.replace(/[/\\]+$/, "");
     const parent = trimmed.split(sep).slice(0, -1).join(sep) || sep;
-    const label = taskShort("va-vn-ps", task.name).replace(/[/\\:*?"<>|]/g, "_");
+    const label = taskShort("va-vn-payslip-rename", task.name).replace(/[/\\:*?"<>|]/g, "_");
     const zipBase = `${label}_${zipTimestamp(new Date())}.zip`;
     const zipPath = `${parent}${sep}${zipBase}`;
     setZipping(true);

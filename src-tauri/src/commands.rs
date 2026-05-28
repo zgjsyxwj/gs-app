@@ -23,45 +23,45 @@ pub async fn list_tasks() -> Vec<TaskDescriptor> {
     // it boots; the frontend uses this list for cold-start menus.
     vec![
         td(
-            "mp-cn",
-            "MP-CN",
-            "微创报销数据处理",
-            "对账单字段清洗、合并、按项目编号汇总",
+            "mp-cn-reimburse-summary",
+            "MP-CN-REIMBURSE-SUMMARY",
+            "微创报销总表汇总",
+            "下载员工票据 · 按国家分类员工 · 总表填写票号/币种/金额/汇率",
             &["xlsx"],
         ),
         td(
-            "ww-au",
-            "WW-AU",
-            "旺旺-澳大利亚报销数据处理",
-            "AUD 币种归一、GST 拆列、生成 SAP 导入模板",
+            "ww-au-expense-claim",
+            "WW-AU-EXPENSE-CLAIM",
+            "旺旺澳洲 Expense Claim 整理",
+            "按员工提交日期制作 Expense Claim · 框选单据金额 · 核对系统/实际报销金额",
             &["xlsx", "csv"],
         ),
         td(
-            "mp-in",
-            "MP-IN",
-            "微创神通-印度报销文件整理",
-            "原始凭证 PDF 重命名、按月份归档、生成索引",
+            "mp-in-reimburse-split",
+            "MP-IN-REIMBURSE-SPLIT",
+            "微创神通印度报销文件分卷",
+            "按金额拆分文件夹 · 单个 < 10MB · 适配 Paysquare 邮件附件上限",
             &["pdf", "xlsx"],
         ),
         td(
-            "va-pay",
-            "VA-PAY",
-            "瓦里安-Payroll 账单拆分",
-            "按 Entity / Cost Center 拆分薪资账单为独立工作簿",
+            "va-tw-payroll-split",
+            "VA-TW-PAYROLL-SPLIT",
+            "瓦里安TW Payroll 账单拆分",
+            "按 sheet 映射拆成 Salary/OT/Social/Variance 4 个独立工作簿 · 加密",
             &["xlsx"],
         ),
         td(
-            "va-vn-r",
-            "VA-VN-R",
-            "瓦里安越南-Payroll 报告处理",
-            "VND 金额取整、按部门生成月度汇总与差异表",
+            "va-vn-payroll-report",
+            "VA-VN-PAYROLL-REPORT",
+            "瓦里安越南 Payroll 报告加工",
+            "GL CODE 2 填 BusinessArea/ProfitCenter · GL CODE 6 填 CostCenter · Variance 加入职/离职日",
             &["xlsx"],
         ),
         td(
-            "va-vn-ps",
-            "VA-VN-PS",
-            "瓦里安越南-Payslip 处理",
-            "复制供应商 PDF · 按 {code}_{YYYYMM}.pdf 重命名 · 清除底部水印",
+            "va-vn-payslip-rename",
+            "VA-VN-PAYSLIP-RENAME",
+            "瓦里安越南 Payslip 重命名并去水印",
+            "按 {code}_{YYYYMM}.pdf 重命名 · 清除底部水印",
             &["folder"],
         ),
     ]
@@ -165,7 +165,7 @@ pub async fn cancel_run(run_id: String) -> Result<(), String> {
 
 // ─────────────────────────── Payslip scan ───────────────────────────
 //
-// VA-VN-PS needs a cheap directory listing BEFORE the task runs so the UI
+// VA-VN-PAYSLIP-RENAME needs a cheap directory listing BEFORE the task runs so the UI
 // can render the comparison list (original → renamed). We do this in Rust
 // rather than via the sidecar streaming protocol because it's a single
 // synchronous response with no progress to report. The Python task is still
@@ -402,7 +402,7 @@ fn unique_entry_name(base: &str, seen: &mut std::collections::HashSet<String>) -
 
 // ─────────────────────────── Payroll sheet scan ───────────────────────────
 //
-// VA-PAY needs to validate that the supplier xlsx actually contains the sheets
+// VA-TW-PAYROLL-SPLIT needs to validate that the supplier xlsx actually contains the sheets
 // the split map expects. .xlsx is a zip; sheet names live in `xl/workbook.xml`
 // as `<sheet name="..." .../>`. We reuse the existing `zip` dep and do a
 // minimal string scan rather than pulling in a real XML / xlsx parser — this

@@ -63,7 +63,7 @@ const DEFAULT_PASSWORD = "twpayroll";
 const EXPECTED_SHEETS = SPLITS.flatMap((s) => s.sheets.map((sh) => sh.name));
 
 export default function Payroll() {
-  const task = taskById("va-pay")!;
+  const task = taskById("va-tw-payroll-split")!;
 
   const [srcPath, setSrcPath] = useState<string | null>(null);
   const [outDir, setOutDir] = useState<string | null>(null);
@@ -150,7 +150,7 @@ export default function Payroll() {
     setRunOk(null);
     try {
       const id = await ipc.startRun({
-        taskId: "va-pay",
+        taskId: "va-tw-payroll-split",
         input: srcPath,
         outputDir: effectiveOutDir,
         options: { period, password },
@@ -192,7 +192,7 @@ export default function Payroll() {
     const sep = effectiveOutDir.includes("\\") ? "\\" : "/";
     const trimmed = effectiveOutDir.replace(/[/\\]+$/, "");
     const parent = trimmed.split(sep).slice(0, -1).join(sep) || sep;
-    const label = taskShort("va-pay", task.name).replace(/[/\\:*?"<>|]/g, "_");
+    const label = taskShort("va-tw-payroll-split", task.name).replace(/[/\\:*?"<>|]/g, "_");
     const stamp = `${period}_${zipTimestamp(new Date())}`;
     const zipPath = `${parent}${sep}${label}_${stamp}.zip`;
     setZipping(true);
@@ -321,12 +321,12 @@ function Header() {
       <div className="flex items-center gap-2 text-[11px] text-ink-50">
         <span>处理任务</span>
         <span className="text-ink-30">/</span>
-        <span className="font-mono">VA-PAY</span>
+        <span className="font-mono">VA-TW-PAYROLL-SPLIT</span>
       </div>
       <div className="mt-1.5 flex items-end justify-between gap-6">
         <div className="min-w-0">
           <h1 className="m-0 mb-1 text-[20px] font-semibold tracking-[-0.01em]">
-            瓦里安 · Payroll 账单拆分
+            瓦里安TW Payroll 账单拆分
           </h1>
           <div className="max-w-[760px] text-[12.5px] leading-[1.55] text-ink-50">
             将供应商提供的合并账单按 sheet 拆分为多个独立 Excel · 输出文件自动加密 ·

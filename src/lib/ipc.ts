@@ -24,8 +24,8 @@ export type SidecarStatus = {
 };
 
 export type TaskDescriptor = {
-  id: string; // e.g. "va-py"
-  code: string; // e.g. "VA-PAY"
+  id: string; // e.g. "va-tw-payroll-split"
+  code: string; // e.g. "VA-TW-PAYROLL-SPLIT"
   name: string;
   desc: string;
   inputs: string[]; // ["xlsx", "csv"]

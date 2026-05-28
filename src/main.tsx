@@ -15,8 +15,8 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
       <Routes>
         <Route element={<App />}>
           <Route index element={<Dashboard />} />
-          <Route path="task/va-vn-ps" element={<Payslip />} />
-          <Route path="task/va-pay" element={<Payroll />} />
+          <Route path="task/va-vn-payslip-rename" element={<Payslip />} />
+          <Route path="task/va-tw-payroll-split" element={<Payroll />} />
           <Route path="task/:taskId" element={<Task />} />
           <Route path="settings" element={<Settings />} />
           <Route path="*" element={<Navigate to="/" replace />} />

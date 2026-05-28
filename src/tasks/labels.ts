@@ -6,12 +6,12 @@
  * and anywhere else we want a compact label.
  */
 export const TASK_SHORT: Record<string, string> = {
-  "mp-cn": "微创 · 报销",
-  "ww-au": "旺旺AU · 报销",
-  "mp-in": "神通IN · 整理",
-  "va-pay": "瓦里安 · 拆分",
-  "va-vn-r": "瓦里安VN · Pyaroll报告",
-  "va-vn-ps": "瓦里安VN · 工资单",
+  "mp-cn-reimburse-summary": "微创 · 报销总表汇总",
+  "ww-au-expense-claim": "旺旺AU · 报销单汇总",
+  "mp-in-reimburse-split": "神通IN · 拆分报销文件",
+  "va-tw-payroll-split": "瓦里安TW · Payroll 账单拆分",
+  "va-vn-payroll-report": "瓦里安VN · Payroll 报告加工",
+  "va-vn-payslip-rename": "瓦里安VN · Payslip 重命名去水印",
 };
 
 export function taskShort(id: string, fallback?: string): string {

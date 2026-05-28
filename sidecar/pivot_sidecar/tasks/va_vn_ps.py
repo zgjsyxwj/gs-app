@@ -1,4 +1,4 @@
-"""瓦里安越南-Payslip 处理 (VA-VN-PS)
+"""瓦里安越南 Payslip 重命名并去水印 (VA-VN-PAYSLIP-RENAME)
 
 复制供应商 PDF → 按 {code}_{YYYYMM}.pdf 重命名 → 清除底部水印
 ("Payslip generate by AB GENιE")。原始文件保持只读。
@@ -161,10 +161,10 @@ def parse_filename(name: str) -> dict | None:
 
 
 class VaVnPayslipTask(TaskBase):
-    task_id = "va-vn-ps"
-    code    = "VA-VN-PS"
-    name    = "瓦里安越南-Payslip 处理"
-    desc    = "复制供应商 PDF · 按 {code}_{YYYYMM}.pdf 重命名 · 清除底部水印"
+    task_id = "va-vn-payslip-rename"
+    code    = "VA-VN-PAYSLIP-RENAME"
+    name    = "瓦里安越南 Payslip 重命名并去水印"
+    desc    = "按 {code}_{YYYYMM}.pdf 重命名 · 清除底部水印"
     inputs  = ["folder"]
 
     def run(self, *, input_path: Path, output_dir: Path, options: dict) -> Iterator[TaskEvent]:

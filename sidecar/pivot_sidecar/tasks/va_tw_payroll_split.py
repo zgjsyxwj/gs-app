@@ -1,4 +1,4 @@
-"""瓦里安-Payroll 账单拆分 (VA-PAY)
+"""瓦里安TW Payroll 账单拆分 (VA-TW-PAYROLL-SPLIT)
 
 按预定义的 sheet 映射，把一个供应商 xlsx 拆成 4 个独立 xlsx：
   · 部門薪資總表 + 員工薪資表 → Varian_Salary Report.xlsx
@@ -42,11 +42,11 @@ def _encrypt_in_place(path: Path, password: str) -> None:
         raise
 
 
-class VaPayTask(TaskBase):
-    task_id = "va-pay"
-    code = "VA-PAY"
-    name = "瓦里安-Payroll 账单拆分"
-    desc = "按 Entity / Cost Center 拆分薪资账单为独立工作簿"
+class VaTwPayrollSplitTask(TaskBase):
+    task_id = "va-tw-payroll-split"
+    code = "VA-TW-PAYROLL-SPLIT"
+    name = "瓦里安TW Payroll 账单拆分"
+    desc = "按 sheet 映射拆成 Salary/OT/Social/Variance 4 个独立工作簿 · 加密"
     inputs = ["xlsx"]
 
     def run(

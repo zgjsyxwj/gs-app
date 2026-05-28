@@ -1,4 +1,4 @@
-"""旺旺-澳大利亚报销数据处理 (WW-AU)
+"""旺旺澳洲 Expense Claim 整理 (WW-AU-EXPENSE-CLAIM)
 
 This is a placeholder implementation — it walks through the same lifecycle
 your real task will use (log / progress / outputs) so the UI is exercisable
@@ -13,19 +13,19 @@ from ..ipc import LogEvent, ProgressEvent
 
 
 class WwAuTask(TaskBase):
-    task_id = "ww-au"
-    code    = "WW-AU"
-    name    = "旺旺-澳大利亚报销数据处理"
-    desc    = "AUD 币种归一、GST 拆列、生成 SAP 导入模板"
+    task_id = "ww-au-expense-claim"
+    code    = "WW-AU-EXPENSE-CLAIM"
+    name    = "旺旺澳洲 Expense Claim 整理"
+    desc    = "按员工提交日期制作 Expense Claim · 框选单据金额 · 核对系统/实际报销金额"
     inputs  = ["xlsx", "csv"]
 
     def run(self, *, input_path: Path, output_dir: Path, options: dict) -> Iterator[TaskEvent]:
         yield LogEvent(f"读取输入：{input_path.name}")
         time.sleep(0.2)
 
-        # ── replace below with the real WW-AU pipeline ───────────────────
+        # ── replace below with the real WW-AU-EXPENSE-CLAIM pipeline ───────────────────
         # 1. parse input_path  (pandas.read_excel / openpyxl / pypdf …)
-        # 2. apply business rules — refer to docs/specs/WW-AU.md
+        # 2. apply business rules — refer to docs/specs/WW-AU-EXPENSE-CLAIM.md
         # 3. write outputs into output_dir
         # 4. yield ProgressEvent(...) per step, LogEvent(...) for notable lines
         # ─────────────────────────────────────────────────────────────────────
@@ -36,7 +36,7 @@ class WwAuTask(TaskBase):
             yield ProgressEvent(done=i + 1, total=total, note=f"step {i+1}/{total}")
             yield LogEvent(f"processed batch {i+1}")
 
-        out = output_dir / f"WW-AU_demo_output.xlsx"
+        out = output_dir / f"WW-AU-EXPENSE-CLAIM_demo_output.xlsx"
         out.touch()
         yield LogEvent(f"写出：{out}", lvl="ok")
         yield str(out)

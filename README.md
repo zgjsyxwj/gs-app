@@ -42,14 +42,14 @@ scaffold/
 
 ## 6 项任务
 
-| Code       | 名称                        |
-| ---------- | --------------------------- |
-| `MP-CN`    | 微创报销数据处理            |
-| `WW-AU`    | 旺旺-澳大利亚报销数据处理   |
-| `MP-IN`    | 微创神通-印度报销文件整理   |
-| `VA-PAY`   | 瓦里安-Payroll 账单拆分     |
-| `VA-VN-R`  | 瓦里安越南-Payroll 报告处理 |
-| `VA-VN-PS` | 瓦里安越南-Payslip 处理     |
+| Code                     | 名称                            |
+| ------------------------ | ------------------------------- |
+| `MP-CN-REIMBURSE-SUMMARY` | 微创报销总表汇总                |
+| `WW-AU-EXPENSE-CLAIM`    | 旺旺澳洲 Expense Claim 整理     |
+| `MP-IN-REIMBURSE-SPLIT`  | 微创神通印度报销文件分卷        |
+| `VA-TW-PAYROLL-SPLIT`    | 瓦里安TW Payroll 账单拆分       |
+| `VA-VN-PAYROLL-REPORT`   | 瓦里安越南 Payroll 报告加工     |
+| `VA-VN-PAYSLIP-RENAME`   | 瓦里安越南 Payslip 重命名并去水印 |
 
 每个任务在 `sidecar/pivot_sidecar/tasks/` 下一个文件，统一继承 `TaskBase`，
 实现 `run(input_path, output_dir, options) -> RunResult`。
