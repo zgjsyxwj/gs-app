@@ -258,7 +258,9 @@ export default function UpdateBanner() {
             当前 {info.currentVersion ?? "–"} → {info.version}
           </div>
           {info.notes && !showProgress && (
-            <div className="mt-2 line-clamp-3 text-[12px] text-ink-70">{info.notes}</div>
+            <div className="mt-2 max-h-44 overflow-y-auto whitespace-pre-line text-[12px] leading-relaxed text-ink-70">
+              {info.notes}
+            </div>
           )}
           {showProgress && (
             <div className="mt-2">
