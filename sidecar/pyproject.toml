@@ -8,7 +8,7 @@ dependencies = [
     "pandas>=2.2",
     "pypdf>=4.3",
     "pydantic>=2.7",
-    "msoffcrypto-tool>=5.4",
+    "msoffcrypto-tool>=6.0",
 ]
 
 [project.optional-dependencies]

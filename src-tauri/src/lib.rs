@@ -32,6 +32,8 @@ pub fn run() {
             commands::payslip_scan,
             commands::payroll_scan,
             commands::reveal_in_folder,
+            commands::open_path,
+            commands::file_size,
             commands::zip_files,
             commands::open_url,
         ])

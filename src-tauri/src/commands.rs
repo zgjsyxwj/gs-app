@@ -269,6 +269,48 @@ pub async fn reveal_in_folder(path: String) -> Result<(), String> {
     open_in_os_file_manager(&p).map_err(|e| e.to_string())
 }
 
+// "Open with default app" — files launch in their associated handler (e.g.
+// .xlsx → Excel/Numbers), folders open in the file manager. Used by the
+// VN payroll report "打开文件" button; reveal_in_folder only highlights.
+#[tauri::command]
+pub async fn open_path(path: String) -> Result<(), String> {
+    let p = PathBuf::from(&path);
+    if !p.exists() {
+        return Err(format!("路径不存在：{path}"));
+    }
+    open_with_default_app(&p).map_err(|e| e.to_string())
+}
+
+// Stat output files after a sidecar run finishes so the UI can show the
+// "184 KB · 2.1s" line per the VN payroll report design. The sidecar protocol
+// only ships path strings; this is the cheapest path to a byte count without
+// extending the wire format.
+#[tauri::command]
+pub async fn file_size(path: String) -> Result<u64, String> {
+    std::fs::metadata(&path)
+        .map(|m| m.len())
+        .map_err(|e| e.to_string())
+}
+
+fn open_with_default_app(path: &std::path::Path) -> std::io::Result<()> {
+    #[cfg(target_os = "macos")]
+    {
+        std::process::Command::new("open").arg(path).status()?;
+    }
+    #[cfg(target_os = "windows")]
+    {
+        std::process::Command::new("cmd")
+            .args(["/c", "start", ""])
+            .arg(path)
+            .status()?;
+    }
+    #[cfg(target_os = "linux")]
+    {
+        std::process::Command::new("xdg-open").arg(path).status()?;
+    }
+    Ok(())
+}
+
 // Open an https URL in the user's default browser. Used as the updater
 // fallback: when reqwest can't reach GitHub's release CDN (common on CN
 // networks), the user can still download the installer through their own

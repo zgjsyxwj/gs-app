@@ -98,6 +98,8 @@ export const ipc = {
   payslipScan: (dir: string) => invoke<PayslipScan>("payslip_scan", { dir }),
   payrollScan: (path: string) => invoke<string[]>("payroll_scan", { path }),
   revealInFolder: (path: string) => invoke<void>("reveal_in_folder", { path }),
+  openPath: (path: string) => invoke<void>("open_path", { path }),
+  fileSize: (path: string) => invoke<number>("file_size", { path }),
   zipFiles: (filePaths: string[], dstZip: string) =>
     invoke<string>("zip_files", { filePaths, dstZip }),
   openUrl: (url: string) => invoke<void>("open_url", { url }),
