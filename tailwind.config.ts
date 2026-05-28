@@ -12,6 +12,7 @@ export default {
       colors: {
         bg: "hsl(var(--bg))",
         panel: "hsl(var(--panel))",
+        "panel-soft": "hsl(var(--panel-soft))",
         card: "hsl(var(--card))",
         ink: "hsl(var(--ink))",
         "ink-70": "hsl(var(--ink-70))",

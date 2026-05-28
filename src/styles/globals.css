@@ -9,6 +9,7 @@
 :root {
   --bg: 60 23% 97%; /* #FAFAF7 */
   --panel: 45 25% 94%; /* #F3F1EB */
+  --panel-soft: 47 53% 97%; /* #FBF9F3  warm tinted row / soft header */
   --card: 0 0% 100%; /* #FFFFFF */
   --ink: 0 0% 10%; /* #1A1A1A */
   --ink-70: 0 0% 23%; /* #3A3A3A */
@@ -23,6 +24,45 @@
   --warn-soft: 40 59% 90%; /* #F5EBD8 */
   --err: 13 59% 40%; /* #A1432A */
   --highlight: 52 91% 82%; /* #FBF0A8  pale yellow header chip */
+
+  /* FX flag palette — per-currency identity tint for the FXChip.
+   * Domain data, not chrome — referenced via inline `hsl(var(--fx-…))`
+   * rather than exposed as Tailwind utilities. */
+  --fx-usd-bg: 147 22% 92%; /* #E6F0EA  — matches --accent-soft */
+  --fx-usd-fg: 157 26% 33%; /* #3F6B5A  — matches --accent */
+  --fx-twd-bg: 0 75% 96%; /* #FDECEC */
+  --fx-twd-fg: 13 59% 40%; /* #A1432A  — matches --err */
+  --fx-vnd-bg: 42 76% 92%; /* #FAF1DC */
+  --fx-vnd-fg: 37 67% 37%; /* #9C6B1F  — matches --warn */
+  --fx-cny-bg: 45 41% 90%; /* #F1ECDC */
+  --fx-cny-fg: 45 55% 30%; /* #776223 */
+  --fx-aud-bg: 217 42% 94%; /* #E8EEF7 */
+  --fx-aud-fg: 218 43% 40%; /* #3A5891 */
+  --fx-inr-bg: 308 30% 92%; /* #F2E6F0 */
+  --fx-inr-fg: 312 47% 33%; /* #7E2E6F */
+  --fx-eur-bg: 213 19% 92%; /* #E6EBF0 */
+  --fx-eur-fg: 215 28% 31%; /* #3A4E66 */
+  --fx-hkd-bg: 32 47% 91%; /* #F4E9DD */
+  --fx-hkd-fg: 31 58% 34%; /* #8B5A24 */
+  --fx-sgd-bg: 99 22% 92%; /* #EAF1E6 */
+  --fx-sgd-fg: 93 32% 31%; /* #4F6B36 */
+
+  /* Per-station identity tints for the VN Payroll Report (menu 5).
+   * Three muted tones differentiate GL / 13th / Variance sub-reports
+   * within an otherwise monochrome direction-A palette. Domain data,
+   * consumed inline via `hsl(var(--tone-…))`. */
+  --tone-amber-ink: 42 60% 30%; /* #7C5F1F */
+  --tone-amber-bg: 45 64% 84%; /* #F1E4BC */
+  --tone-amber-border: 43 47% 73%; /* #D9C99A */
+  --tone-amber-soft: 46 73% 95%; /* #FBF6E8 */
+  --tone-teal-ink: 207 55% 27%; /* #1F4A6B */
+  --tone-teal-bg: 207 41% 86%; /* #CCDEEB */
+  --tone-teal-border: 208 33% 70%; /* #9AB8CC */
+  --tone-teal-soft: 208 38% 95%; /* #EEF4F8 */
+  --tone-plum-ink: 254 35% 35%; /* #4A3A78 */
+  --tone-plum-bg: 258 47% 88%; /* #DDD3EE */
+  --tone-plum-border: 259 36% 79%; /* #C0B5DC */
+  --tone-plum-soft: 263 56% 96%; /* #F4F0FB */
 }
 
 html,
