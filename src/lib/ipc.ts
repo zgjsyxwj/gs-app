@@ -9,6 +9,7 @@
  *   rust  → front: event("task:progress" | "task:log" | "task:done")
  */
 import { invoke } from "@tauri-apps/api/core";
+import { getVersion } from "@tauri-apps/api/app";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { check as checkUpdater, type Update, type DownloadEvent } from "@tauri-apps/plugin-updater";
 import { relaunch } from "@tauri-apps/plugin-process";
@@ -88,6 +89,7 @@ let pendingUpdate: Update | null = null;
 
 export const ipc = {
   listTasks: () => invoke<TaskDescriptor[]>("list_tasks"),
+  appVersion: () => getVersion(),
   systemUsername: () => invoke<string>("system_username"),
   sidecarStatus: () => invoke<SidecarStatus>("sidecar_status"),
   restartSidecar: () => invoke<void>("sidecar_restart"),

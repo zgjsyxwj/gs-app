@@ -46,7 +46,7 @@ function TaskRow({ id, code, short }: { id: string; code: string; short: string 
           >
             {tag}
           </span>
-          <span className="truncate">{short}</span>
+          <span className="min-w-0 leading-tight">{short}</span>
         </>
       )}
     </NavLink>
@@ -55,11 +55,16 @@ function TaskRow({ id, code, short }: { id: string; code: string; short: string 
 
 export default function Sidebar() {
   const [status, setStatus] = useState<SidecarStatus | null>(null);
+  const [version, setVersion] = useState<string | null>(null);
   useEffect(() => {
     ipc
       .sidecarStatus()
       .then(setStatus)
       .catch(() => setStatus(null));
+    ipc
+      .appVersion()
+      .then(setVersion)
+      .catch(() => setVersion(null));
   }, []);
 
   return (
@@ -88,14 +93,17 @@ export default function Sidebar() {
 
       <div className="flex-1" />
 
-      <div className="flex items-center gap-2 px-3 pt-2 text-[11px] text-ink-50">
-        <span
-          className={cn(
-            "h-1.5 w-1.5 rounded-full",
-            status?.connected ? "bg-[#67B26F]" : "bg-ink-30"
-          )}
-        />
-        <span className="font-mono">sidecar · {status?.version ?? "–"}</span>
+      <div className="px-3 pt-2 text-[11px] text-ink-50">
+        <div className="font-mono">v{version ?? "–"}</div>
+        <div className="mt-1 flex items-center gap-2">
+          <span
+            className={cn(
+              "h-1.5 w-1.5 rounded-full",
+              status?.connected ? "bg-[#67B26F]" : "bg-ink-30"
+            )}
+          />
+          <span className="font-mono">sidecar · {status?.version ?? "–"}</span>
+        </div>
       </div>
     </aside>
   );
