@@ -173,7 +173,7 @@ export default function Payslip() {
       <div className="flex items-stretch gap-2.5 px-8 pt-3.5">
         <PathField
           kind="source"
-          label="来源 · 供应商 payslip"
+          label="供应商 payslip"
           path={srcDir ?? "请选择文件夹"}
           placeholder={srcDir == null}
           onChange={pickSource}
@@ -181,7 +181,7 @@ export default function Payslip() {
         <PathArrow />
         <PathField
           kind="output"
-          label="输出 · CDP 交付"
+          label="CDP 交付"
           path={outDir ?? "请选择文件夹"}
           placeholder={outDir == null}
           onChange={pickOutput}
@@ -596,24 +596,41 @@ function ListFooter({
               <span className="text-ink-30">·</span>
             </>
           )}
-          <button
-            onClick={onShowFolder}
-            disabled={!canShowFolder}
-            className="text-accent hover:underline disabled:cursor-not-allowed disabled:no-underline disabled:opacity-50"
-          >
+          <FooterActionButton onClick={onShowFolder} disabled={!canShowFolder}>
             在文件夹中显示
-          </button>
-          <span className="text-ink-30">·</span>
-          <button
-            onClick={onPackageZip}
-            disabled={!canZip || zipping}
-            className="text-accent hover:underline disabled:cursor-not-allowed disabled:no-underline disabled:opacity-50"
-          >
+          </FooterActionButton>
+          <FooterActionButton onClick={onPackageZip} disabled={!canZip || zipping}>
             {zipping ? "打包中…" : "打包 ZIP"}
-          </button>
+          </FooterActionButton>
         </>
       )}
     </div>
+  );
+}
+
+function FooterActionButton({
+  onClick,
+  disabled,
+  children,
+}: {
+  onClick: () => void;
+  disabled?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className={cn(
+        "inline-flex flex-none items-center rounded-[5px] border border-ink-10 bg-card",
+        "px-2.5 py-[5px] text-[11px] font-medium leading-none text-accent",
+        "transition-colors duration-[120ms] hover:border-accent hover:bg-accent-soft",
+        "disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-ink-10 disabled:hover:bg-card"
+      )}
+    >
+      {children}
+    </button>
   );
 }
 
