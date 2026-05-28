@@ -41,6 +41,7 @@
     "externalBin": ["binaries/pivot-sidecar"],
     "macOS": {
       "signingIdentity": "-",
+      "hardenedRuntime": false,
       "entitlements": null,
       "providerShortName": null
     },
