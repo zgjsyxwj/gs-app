@@ -129,7 +129,11 @@ jobs:
         shell: bash
         run: |
           TAG="${GITHUB_REF_NAME}"
-          PREV_TAG="$(git describe --tags --abbrev=0 "${TAG}^" 2>/dev/null || true)"
+          # Previous version by semver order, not commit ancestry: `git describe`
+          # walks history and skips tags that share a commit (e.g. when v0.3.2 and
+          # v0.3.3 point at the same SHA), producing the wrong range. Sorting tags
+          # by version and taking the entry just below TAG is unambiguous.
+          PREV_TAG="$(git tag --list 'v*' --sort=-version:refname | awk -v cur="$TAG" 'f{print; exit} $0==cur{f=1}')"
           if [ -n "$PREV_TAG" ]; then
             RANGE="${PREV_TAG}..${TAG}"
             echo "changelog range: ${RANGE}"

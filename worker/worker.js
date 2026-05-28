@@ -10,8 +10,13 @@
 // Two routes:
 //   GET /latest.json      → fetch GitHub's latest.json, rewrite each platform
 //                           URL from github.com/... → this Worker's origin,
-//                           return JSON. Short cache (signature/version may
-//                           change between releases).
+//                           and replace the baked single-release `notes` with a
+//                           changelog grouped by version, covering every release
+//                           the client hasn't seen. The client passes its
+//                           version via `?current=<x.y.z>` (Tauri's
+//                           {{current_version}}); without it the baked notes are
+//                           served unchanged. Short cache, keyed by full URL so
+//                           each `current` value caches independently.
 //   GET /<tag>/<filename> → reverse-proxy the GitHub release asset. Long
 //                           cache (release assets are immutable).
 //
@@ -25,7 +30,7 @@ const GH_REPO = "gs-app";
 const GH_RELEASE_BASE = `https://github.com/${GH_OWNER}/${GH_REPO}/releases`;
 
 export default {
-  async fetch(request, _env, ctx) {
+  async fetch(request, env, ctx) {
     const url = new URL(request.url);
 
     if (request.method !== "GET" && request.method !== "HEAD") {
@@ -33,7 +38,7 @@ export default {
     }
 
     if (url.pathname === "/latest.json") {
-      return handleLatestJson(url, request, ctx);
+      return handleLatestJson(url, request, env, ctx);
     }
 
     // /<tag>/<filename> — anything else with a 2-segment path is treated as
@@ -48,7 +53,7 @@ export default {
   },
 };
 
-async function handleLatestJson(url, request, ctx) {
+async function handleLatestJson(url, request, env, ctx) {
   const cache = caches.default;
   const cacheKey = new Request(url.toString(), { method: "GET" });
   const cached = await cache.match(cacheKey);
@@ -77,6 +82,15 @@ async function handleLatestJson(url, request, ctx) {
     const [, tag, filename] = match;
     platform.url = `${origin}/${tag}/${filename}`;
   }
+
+  // Replace the single-release `notes` with the full span of versions the
+  // client hasn't seen. Any failure (rate limit, unknown tag, network) leaves
+  // the baked notes untouched, so the updater still works.
+  const notes = await buildChangelog(url, manifest, env).catch((e) => {
+    console.log("changelog build failed, keeping baked notes:", e);
+    return null;
+  });
+  if (notes) manifest.notes = notes;
 
   const body = JSON.stringify(manifest);
   const response = new Response(body, {
@@ -140,4 +154,85 @@ async function handleArtifact(tag, filename, request, ctx) {
   return request.method === "HEAD"
     ? new Response(null, { status: response.status, headers: response.headers })
     : response;
+}
+
+// Build a changelog grouped by version, one section per release the client
+// hasn't seen yet, newest version first. Needs the client's version via
+// `?current=<x.y.z>` (Tauri's {{current_version}}); without it — or on any
+// failure — returns null, so the baked single-release notes are served as-is
+// and the updater never breaks on a changelog problem.
+async function buildChangelog(url, manifest, env) {
+  const version = String(manifest.version ?? "").replace(/^v/, "");
+  const current = (url.searchParams.get("current") ?? "").replace(/^v/, "");
+  if (!/^\d+\.\d+\.\d+/.test(version) || !/^\d+\.\d+\.\d+/.test(current)) return null;
+  if (cmpSemver(current, version) >= 0) return null;
+
+  const tags = await ghApi(`/repos/${GH_OWNER}/${GH_REPO}/tags?per_page=100`, env);
+  if (!Array.isArray(tags)) return null;
+  const names = tags
+    .map((t) => t?.name)
+    .filter((n) => typeof n === "string" && /^v\d+\.\d+\.\d+/.test(n))
+    .sort((a, b) => cmpSemver(a, b)); // oldest first
+
+  // A version's own log is the commits since the tag just below it. Walk the
+  // versions in (current, latest] newest first, one compare call each. Versions
+  // that share a commit with their predecessor produce an empty section and are
+  // skipped.
+  const sections = [];
+  for (let i = names.length - 1; i >= 0; i--) {
+    const tag = names[i];
+    if (cmpSemver(tag, version) > 0 || cmpSemver(tag, current) <= 0) continue;
+    const prev = i > 0 ? names[i - 1] : `v${current}`;
+    const cmp = await ghApi(
+      `/repos/${GH_OWNER}/${GH_REPO}/compare/${prev}...${tag}`,
+      env,
+    );
+    const lines = commitLines(cmp);
+    if (lines.length) sections.push(`${tag.replace(/^v/, "")}\n${lines.join("\n")}`);
+  }
+  return sections.length ? sections.join("\n\n") : null;
+}
+
+// Commit subjects from a compare response, newest first, deduped, merges dropped.
+function commitLines(cmp) {
+  const commits = Array.isArray(cmp?.commits) ? cmp.commits : [];
+  const lines = [];
+  const seen = new Set();
+  for (let i = commits.length - 1; i >= 0; i--) {
+    const subject = String(commits[i]?.commit?.message ?? "")
+      .split("\n")[0]
+      .trim();
+    if (!subject || subject.startsWith("Merge ") || seen.has(subject)) continue;
+    seen.add(subject);
+    lines.push(`- ${subject}`);
+  }
+  return lines;
+}
+
+async function ghApi(path, env) {
+  const headers = {
+    "user-agent": "pivot-desk-updater-worker",
+    accept: "application/vnd.github+json",
+  };
+  // Optional: set a GH_TOKEN secret to lift the 60 req/hr unauthenticated
+  // limit to 5000/hr. Works fine without it for low traffic.
+  if (env?.GH_TOKEN) headers.authorization = `Bearer ${env.GH_TOKEN}`;
+  const res = await fetch(`https://api.github.com${path}`, {
+    headers,
+    cf: { cacheTtl: 60, cacheEverything: true },
+  });
+  if (!res.ok) {
+    console.log(`gh api ${path} -> ${res.status}`);
+    return null;
+  }
+  return res.json();
+}
+
+function cmpSemver(a, b) {
+  const pa = a.replace(/^v/, "").split(".").map((n) => parseInt(n, 10) || 0);
+  const pb = b.replace(/^v/, "").split(".").map((n) => parseInt(n, 10) || 0);
+  for (let i = 0; i < 3; i++) {
+    if (pa[i] !== pb[i]) return (pa[i] || 0) - (pb[i] || 0);
+  }
+  return 0;
 }

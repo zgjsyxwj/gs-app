@@ -20,7 +20,13 @@ which CN networks reach far more reliably than the Azure CDN.
 
 - `GET /latest.json` — fetches GitHub's `latest.json`, rewrites every
   platform URL from `github.com/.../releases/download/<tag>/<file>` to
-  `<this-worker>/<tag>/<file>`, returns the result. 60s edge cache.
+  `<this-worker>/<tag>/<file>`, and replaces the baked single-release
+  `notes` with a changelog **grouped by version** — one section per release
+  the client hasn't seen, newest first. The client passes its version via
+  `?current=<x.y.z>` (Tauri's `{{current_version}}`); without it (older
+  clients, or the GitHub fallback endpoint) the baked single-release notes
+  are served unchanged. 60s edge cache, keyed by full URL so each `current`
+  value caches independently.
 - `GET /<tag>/<filename>` — reverse-proxies the matching release asset
   from `github.com/.../releases/download/<tag>/<filename>`. 24h edge cache
   (release assets are immutable).
@@ -65,14 +71,17 @@ first endpoint with the subdomain from above:
 
 ```json
 "endpoints": [
-  "https://pivot-desk-updater.your-subdomain.workers.dev/latest.json",
+  "https://pivot-desk-updater.your-subdomain.workers.dev/latest.json?current={{current_version}}",
   "https://github.com/zgjsyxwj/gs-app/releases/latest/download/latest.json"
 ]
 ```
 
-The second URL stays as a fallback — if the Worker is ever down, Tauri's
-updater tries endpoint #2 automatically and the app still updates (slowly,
-via the direct GitHub path).
+The `?current={{current_version}}` is what lets the Worker show the full
+changelog since the user's installed version. Tauri fills the placeholder
+in at request time. The second URL stays as a fallback — if the Worker is
+ever down, Tauri's updater tries endpoint #2 automatically and the app
+still updates (slowly, via the direct GitHub path), showing only the latest
+release's notes.
 
 Commit, tag, push. From the next release onward all users who upgrade
 through that build will route through the Worker.
@@ -85,9 +94,25 @@ After deploy, hit both routes and confirm:
 # latest.json: URLs should point at *.workers.dev, not github.com
 curl -s https://pivot-desk-updater.your-subdomain.workers.dev/latest.json | jq
 
+# changelog: `.notes` should list every commit since the given version
+curl -s "https://pivot-desk-updater.your-subdomain.workers.dev/latest.json?current=0.3.1" | jq -r .notes
+
 # artifact: should 200 with the tarball bytes
 curl -sI https://pivot-desk-updater.your-subdomain.workers.dev/v0.2.5/Pivot.Desk_aarch64.app.tar.gz
 ```
+
+## Optional: GitHub API token
+
+The changelog uses GitHub's unauthenticated API (60 req/hr per edge IP). The
+60s cache keeps real traffic well under that, but if you ever hit a `403`
+(visible as `.notes` falling back to a single line), set a token to lift the
+limit to 5000/hr:
+
+```bash
+wrangler secret put GH_TOKEN     # paste a fine-grained PAT with public-repo read
+```
+
+The Worker uses it automatically when present; nothing breaks without it.
 
 ## Updating the Worker
 
