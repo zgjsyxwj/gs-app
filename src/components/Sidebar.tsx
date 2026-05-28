@@ -27,6 +27,7 @@ function TaskRow({ id, code, short }: { id: string; code: string; short: string 
   return (
     <NavLink
       to={`/task/${id}`}
+      title={short}
       className={({ isActive }) =>
         cn(
           "flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-[12.5px]",
@@ -46,7 +47,7 @@ function TaskRow({ id, code, short }: { id: string; code: string; short: string 
           >
             {tag}
           </span>
-          <span className="min-w-0 leading-tight">{short}</span>
+          <span className="min-w-0 truncate leading-tight">{short}</span>
         </>
       )}
     </NavLink>
