@@ -7,6 +7,13 @@
   · 薪資差異分析表             → Varian_Variance Report.xlsx
 
 文件名前缀 = options['period']，输出文件用 options['password'] 加密 (ECMA-376 Agile)。
+
+公式策略 · 见 docs 里的 option B 决策：
+- Salary / OT / Social 的公式都是 sheet 内部引用，直接 copy 即可。
+- 薪資差異分析表 有 304 条 XLOOKUP 指向 員工資料匯出 (该 sheet 不在
+  任何输出里 → 拆分后会变成 #REF!)。所以 Variance 输出时把这张
+  sheet 的公式逐 cell 替换为 Excel 缓存的计算结果，相当于一个
+  「时点快照」 — 不再能重算，但也不带走员工原始资料表。
 """
 from __future__ import annotations
 from pathlib import Path
@@ -25,6 +32,9 @@ SPLITS: list[tuple[str, list[str]]] = [
     ("Varian_Social Details Report.xlsx", ["保險資料明細"]),
     ("Varian_Variance Report.xlsx", ["薪資差異分析表"]),
 ]
+
+# 输出时需要把公式攤平为 cached values 的 sheet (见 docstring · option B)
+FLATTEN_SHEETS: set[str] = {"薪資差異分析表"}
 
 
 def _encrypt_in_place(path: Path, password: str) -> None:
@@ -89,6 +99,57 @@ class VaTwPayrollSplitTask(TaskBase):
             # 保持 SPLITS 中声明的顺序
             order = {name: idx for idx, name in enumerate(keep)}
             wb._sheets.sort(key=lambda ws: order.get(ws.title, len(order)))
+
+            # option B · 把指定 sheet 的公式攤平为 Excel 缓存值。前提是
+            # 源檔上次由 Excel 写出 (会带 cached values)。如果是
+            # LibreOffice / 程序生成的 xlsx 可能没有缓存 → 该 cell 落 None
+            # 并 emit warn。
+            flatten_here = [s for s in keep if s in FLATTEN_SHEETS]
+            flattened_total = 0
+            missing_cache = 0
+            if flatten_here:
+                # Not read_only: we need .coordinate on cells, and read_only
+                # yields EmptyCell objects for the bounding-box padding which
+                # don't expose it. Full load is fine for this file class.
+                wb_v = load_workbook(input_path, data_only=True)
+                try:
+                    for sheet_name in flatten_here:
+                        ws = wb[sheet_name]
+                        ws_v = wb_v[sheet_name]
+                        # Keep ALL cells incl. those with cached "" — XLOOKUP
+                        # against an empty target column legitimately returns
+                        # the empty string, and that's real data we mustn't
+                        # silently drop to None.
+                        cache = {
+                            c.coordinate: c.value
+                            for row in ws_v.iter_rows()
+                            for c in row
+                        }
+                        for row in ws.iter_rows():
+                            for cell in row:
+                                v = cell.value
+                                if isinstance(v, str) and v.startswith("="):
+                                    cached = cache.get(cell.coordinate)
+                                    if cached is None:
+                                        missing_cache += 1
+                                    cell.value = cached
+                                    flattened_total += 1
+                finally:
+                    wb_v.close()
+                if flattened_total:
+                    if missing_cache:
+                        yield LogEvent(
+                            f"  攤平 {flattened_total} 个公式 → cached values · "
+                            f"其中 {missing_cache} 个源檔未缓存计算结果 (已留空) · "
+                            "建议在 Excel 内按 Ctrl+Alt+F9 强制重算后再保存源檔",
+                            lvl="warn",
+                        )
+                    else:
+                        yield LogEvent(
+                            f"  攤平 {flattened_total} 个公式 → cached values",
+                            lvl="info",
+                        )
+
             wb.save(out_path)
             wb.close()
 
