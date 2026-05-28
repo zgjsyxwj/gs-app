@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { ipc, type SidecarStatus } from "@/lib/ipc";
-import { CHECK_EVENT } from "@/components/UpdateBanner";
+import { CHECK_EVENT, RELEASES_BASE } from "@/components/UpdateBanner";
 
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -95,6 +95,9 @@ export default function Settings() {
                     onClick={() => window.dispatchEvent(new Event(CHECK_EVENT))}
                   >
                     立即检查
+                  </Button>
+                  <Button variant="ghost" onClick={() => ipc.openUrl(`${RELEASES_BASE}/latest`)}>
+                    手动下载
                   </Button>
                   <Toggle on={autoCheck} onClick={() => setAutoCheck((v) => !v)} />
                 </div>
