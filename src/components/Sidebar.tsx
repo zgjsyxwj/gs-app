@@ -95,7 +95,10 @@ export default function Sidebar() {
       <div className="flex-1" />
 
       <div className="px-3 pt-2 text-[11px] text-ink-50">
-        <div className="font-mono">v{version ?? "–"}</div>
+        <div className="flex items-center gap-2">
+          <span className="h-1.5 w-1.5 rounded-full bg-[#67B26F]" />
+          <span className="font-mono">app · {version ?? "–"}</span>
+        </div>
         <div className="mt-1 flex items-center gap-2">
           <span
             className={cn(
