@@ -12,7 +12,7 @@ const CHECK_DELAY_MS = 5_000;
 // networks even when api.github.com / objects.githubusercontent.com work).
 // The .dmg is what mac users expect for a manual install; release page is
 // a secondary link for users who want to see notes / pick a different asset.
-const RELEASES_BASE = "https://github.com/zgjsyxwj/gs-app/releases";
+export const RELEASES_BASE = "https://github.com/zgjsyxwj/gs-app/releases";
 const dmgUrl = (v: string) => `${RELEASES_BASE}/download/v${v}/Pivot.Desk_${v}_aarch64.dmg`;
 
 // Settings.tsx dispatches this when the user clicks "立即检查".
@@ -196,7 +196,10 @@ export default function UpdateBanner() {
     );
   }
 
-  // Manual-check failure with no resolved version — generic error toast.
+  // Manual-check failure with no resolved version — the check couldn't reach
+  // any endpoint, so we don't know the latest version. Point manual download
+  // at /releases/latest (redirects to the newest release) rather than a
+  // version-specific .dmg.
   if (phase === "error" && !info?.version) {
     return (
       <Toast>
@@ -204,13 +207,22 @@ export default function UpdateBanner() {
           <div className="mt-0.5 flex h-7 w-7 flex-none items-center justify-center rounded-md bg-err/10 text-err">
             !
           </div>
-          <div className="flex-1">
+          <div className="min-w-0 flex-1">
             <div className="text-[13px] font-semibold">检查更新失败</div>
-            {error && <div className="mt-1 text-[11.5px] text-err">{error}</div>}
+            {error && <div className="mt-1 break-words text-[11.5px] text-err">{error}</div>}
+            <div className="mt-1 text-[11px] text-ink-50">
+              无法连接更新服务器,可在浏览器中手动下载最新版本。
+            </div>
           </div>
+        </div>
+        <div className="mt-3 flex items-center justify-end gap-2">
           <Button variant="ghost" onClick={onDismiss}>
             关闭
           </Button>
+          <Button variant="ghost" onClick={() => ipc.openUrl(`${RELEASES_BASE}/latest`)}>
+            在浏览器中下载
+          </Button>
+          <Button onClick={() => void runCheck(true)}>重试</Button>
         </div>
       </Toast>
     );
