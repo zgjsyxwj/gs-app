@@ -23,6 +23,7 @@ from openpyxl import load_workbook
 
 from .base import TaskBase, TaskEvent
 from ..ipc import LogEvent, ProgressEvent
+from ..xlsx import ExcelError, open_xlsx
 
 
 # (输出文件名后缀, 保留的 sheet 列表) — 顺序与前端 SPLITS 一致
@@ -70,17 +71,14 @@ class VaTwPayrollSplitTask(TaskBase):
 
         yield LogEvent(f"读取输入：{input_path.name}")
 
-        # 先校验所有需要的 sheet 都在
+        # 先校验文件可打开 + 所有需要的 sheet 都在（坏文件在此抛 ExcelError）
         all_needed = [name for _, names in SPLITS for name in names]
-        probe = load_workbook(input_path, read_only=True, data_only=False)
+        probe = open_xlsx(input_path, read_only=True)
         existing = set(probe.sheetnames)
         probe.close()
         missing = [n for n in all_needed if n not in existing]
         if missing:
-            yield LogEvent(
-                f"账单缺少预期 sheet：{', '.join(missing)}", lvl="err"
-            )
-            return
+            raise ExcelError(f"账单缺少预期 sheet：{', '.join(missing)}")
 
         total = len(SPLITS)
         for i, (out_suffix, keep) in enumerate(SPLITS):

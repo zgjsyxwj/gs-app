@@ -27,12 +27,12 @@ from pathlib import Path
 from typing import Iterator
 
 import msoffcrypto
-import openpyxl
 from openpyxl.utils import get_column_letter
 from openpyxl.workbook import Workbook
 
 from .base import TaskBase, TaskEvent
 from ..ipc import LogEvent, ProgressEvent
+from ..xlsx import ExcelError, open_xlsx
 
 
 PASSWORD = "vnpayroll"
@@ -55,20 +55,6 @@ OUT_LAST_HEADER = "Last working date (dd/mm/yyyy)"
 
 # 无 station 的旧调用仍走 placeholder（写随机字节），保留前端 UI 可用性
 VARIANCE_PLACEHOLDER_BYTES = 142 * 1024
-
-
-def _decrypt(src: Path, password: str) -> io.BytesIO:
-    with open(src, "rb") as f:
-        of = msoffcrypto.OfficeFile(f)
-        if not of.is_encrypted():
-            # 未加密：直接把内容塞进 BytesIO 返回，调用方继续走 openpyxl
-            f.seek(0)
-            return io.BytesIO(f.read())
-        of.load_key(password=password)
-        out = io.BytesIO()
-        of.decrypt(out)
-        out.seek(0)
-        return out
 
 
 def _save_encrypted(wb: Workbook, dst: Path, password: str) -> None:
@@ -142,7 +128,7 @@ def _build_payroll_map(ws) -> dict[str, tuple]:
         ) if col is None
     ]
     if missing:
-        raise ValueError(f"Payroll 报告未找到必需列：{missing}")
+        raise ExcelError(f"Payroll 报告未找到必需列：{missing}")
 
     mp: dict[str, tuple] = {}
     for r in range(1, ws.max_row + 1):
@@ -193,13 +179,12 @@ def _process_gl_like(
     password: str,
 ) -> tuple[int, int]:
     """处理 GL / 13th 报告。返回 (匹配行数, 总数据行数)。"""
-    dec = _decrypt(input_path, password)
-    wb = openpyxl.load_workbook(dec, data_only=False)
+    wb = open_xlsx(input_path, password=password)
     ws = wb.active
 
     code_col = _find_col(ws, code_headers)
     if code_col is None:
-        raise ValueError(f"未找到 GL 列：尝试过 {code_headers}")
+        raise ExcelError(f"未找到 GL 列：尝试过 {code_headers}")
     ba_col = _find_col(ws, (BA_HEADER,))
     cc_col = _find_col(ws, (CC_HEADER,))
     pc_col = _find_col(ws, (PC_HEADER,))
@@ -209,7 +194,7 @@ def _process_gl_like(
         ) if col is None
     ]
     if missing:
-        raise ValueError(f"未找到必需列：{missing}")
+        raise ExcelError(f"未找到必需列：{missing}")
 
     touched = 0
     total = 0
@@ -273,6 +258,8 @@ class VaVnReportTask(TaskBase):
         out_path = output_dir / input_path.name
         try:
             touched, total = _process_gl_like(input_path, out_path, code_headers, password)
+        except ExcelError:
+            raise  # 输入校验错误：消息已友好，交给 server 统一展示（不加 {kind} 前缀）
         except Exception as e:  # noqa: BLE001
             yield LogEvent(f"{kind} 处理失败：{e}", lvl="err")
             raise
@@ -302,30 +289,30 @@ class VaVnReportTask(TaskBase):
         # 服务器只校验主输入(input)存在；第二个文件得自己兜底。
         variance_in = options.get("input2")
         if not variance_in:
-            raise ValueError("缺少 Variance 报告（未收到第二个输入文件）")
+            raise ExcelError("缺少 Variance 报告（未收到第二个输入文件）")
         variance_path = Path(str(variance_in))
         if not variance_path.exists():
-            raise ValueError(f"Variance 报告不存在：{variance_path}")
+            raise ExcelError(f"Variance 报告不存在：{variance_path}")
 
         yield LogEvent(f"读取 Payroll：{input_path.name}")
         yield ProgressEvent(done=0, total=3, note="解密 Payroll")
-        pw = openpyxl.load_workbook(_decrypt(input_path, password), data_only=True)
+        pw = open_xlsx(input_path, password=password, data_only=True)
         pw_ws = _find_payroll_sheet(pw)
         if pw_ws is None:
-            raise ValueError("Payroll 报告未找到含 GID / Start date 的工作表")
+            raise ExcelError("Payroll 报告未找到含 GID / Start date 的工作表")
         payroll_map = _build_payroll_map(pw_ws)
         yield LogEvent(f"Payroll：建立 GID 索引 {len(payroll_map)} 条", lvl="ok")
 
         yield ProgressEvent(done=1, total=3, note="解密 Variance")
         yield LogEvent(f"读取 Variance：{variance_path.name}")
-        vw = openpyxl.load_workbook(_decrypt(variance_path, password), data_only=False)
+        vw = open_xlsx(variance_path, password=password)
         vw_ws = vw.active
         gid_col = _find_header_col(vw_ws, ("GID",))
         if gid_col is None:
-            raise ValueError("Variance 报告未找到 GID 列")
+            raise ExcelError("Variance 报告未找到 GID 列")
         name_col = _find_header_col(vw_ws, ("Full Name",))
         if name_col is None:
-            raise ValueError("Variance 报告未找到 Full Name 列")
+            raise ExcelError("Variance 报告未找到 Full Name 列")
 
         # 紧跟 Full Name 插入两列（gid_col 在其左侧，列号不受影响）
         start_out = name_col + 1

@@ -4,6 +4,7 @@ import time
 from pathlib import Path
 from .ipc import write_line, RunResult, LogEvent, ProgressEvent
 from .tasks import REGISTRY
+from .xlsx import ExcelError
 
 
 class Server:
@@ -74,6 +75,10 @@ class Server:
                     outputs.append(str(ev))
 
             RunResult(True, int((time.monotonic() - t0) * 1000), outputs, warnings).emit(run_id)
+        except ExcelError as e:
+            # 输入校验错误：直接展示友好中文消息，不加「任务失败:」前缀、不带 traceback。
+            LogEvent(str(e), lvl="err").emit(run_id)
+            RunResult(False, int((time.monotonic() - t0) * 1000), [], [str(e)]).emit(run_id)
         except Exception as e:  # noqa: BLE001
             LogEvent(f"任务失败: {e}", lvl="err").emit(run_id)
             RunResult(False, int((time.monotonic() - t0) * 1000), [], [str(e)]).emit(run_id)
