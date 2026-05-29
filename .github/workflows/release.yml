@@ -50,6 +50,9 @@ jobs:
           - os: macos-latest
             target: aarch64-apple-darwin
             rust_targets: aarch64-apple-darwin
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            rust_targets: x86_64-pc-windows-msvc
 
     runs-on: ${{ matrix.os }}
 
@@ -165,12 +168,14 @@ jobs:
             });
 
             // Match updater artifacts. Tauri 2 produces:
-            //   macOS aarch64 → *_aarch64.app.tar.gz + .sig
+            //   macOS aarch64    → *_aarch64.app.tar.gz + .sig
+            //   Windows x64 NSIS → *_x64-setup.exe + .sig
             const findSig = (re) => release.assets.find(a => re.test(a.name) && a.name.endsWith('.sig'));
             const bundleFor = (sigName) => release.assets.find(a => a.name === sigName.replace(/\.sig$/, ''));
 
             const matchers = {
               'darwin-aarch64': /aarch64\.app\.tar\.gz\.sig$/,
+              'windows-x86_64': /x64-setup\.exe\.sig$/,
             };
 
             const downloadText = async (asset_id) => {
