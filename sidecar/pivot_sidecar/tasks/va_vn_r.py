@@ -1,8 +1,7 @@
 """瓦里安越南 Payroll 报告加工 (VA-VN-PAYROLL-REPORT)
 
 按 station (GL / 13th / Variance) 分派处理。前端每个 station 单独发起一次
-run；options.station 决定走哪条分支。当前 GL/13th 已实现真实逻辑，Variance
-仍为占位实现。
+run；options.station 决定走哪条分支。GL / 13th / Variance 均已实现真实逻辑。
 
 供应商发来的 xlsx 用 ``vnpayroll`` 密码加密；解密后用 openpyxl 原地改若干
 单元格（保留样式），再以同样的密码重新加密写回。
@@ -13,16 +12,23 @@ GL / 13th 规则一致，只是列名不同：
 
 对每一行：当 GL 编码以 "2" 开头 → BusinessArea=2000、ProfitCenter=10000000、
 CostCenter 清空。以 "6" 开头则不动（供应商已填好 CostCenter）。
+
+Variance：前端传入两个文件——Payroll 报告（input_path）与 Variance 报告
+(options["input2"])。按 GID 关联，把 Payroll 的 Start date / Last working date
+两列插入到 Variance 的 Full Name 之后（第 5、6 列），再加密写回
+VarianVN_Variance_<period>_CDP.xlsx。
 """
 from __future__ import annotations
 import io
 import os
 import time
+from copy import copy
 from pathlib import Path
 from typing import Iterator
 
 import msoffcrypto
 import openpyxl
+from openpyxl.utils import get_column_letter
 from openpyxl.workbook import Workbook
 
 from .base import TaskBase, TaskEvent
@@ -40,7 +46,14 @@ PC_HEADER = "ProfitCenter"
 BA_VALUE = 2000
 PC_VALUE = 10000000
 
-# 占位 Variance 仍按原 placeholder 行为输出（保留前端 UI 可用性）
+# Variance station：按 GID 把 Payroll 这两列插入到 Variance 的 Full Name 之后。
+# Payroll 实际表头形如 "Start date (dd/mm/yyyy)"，用「包含」匹配以兼容年份差异。
+PR_START_HEADER = "Start date"
+PR_LAST_HEADER = "Last working date"
+OUT_START_HEADER = "Start date (dd/mm/yyyy)"
+OUT_LAST_HEADER = "Last working date (dd/mm/yyyy)"
+
+# 无 station 的旧调用仍走 placeholder（写随机字节），保留前端 UI 可用性
 VARIANCE_PLACEHOLDER_BYTES = 142 * 1024
 
 
@@ -81,6 +94,96 @@ def _starts_with(value, prefix: str) -> bool:
         return False
     s = str(value).strip()
     return s.startswith(prefix)
+
+
+def _find_header_col(ws, candidates: tuple[str, ...], *, contains: bool = False,
+                     max_scan_rows: int = 20) -> int | None:
+    """在前 max_scan_rows 行里按阅读顺序找首个命中表头的列（1-based）。
+
+    GL/13th 表头在第 1 行，故 ``_find_col`` 够用；Variance 用到的 Payroll 表头
+    跨第 9/11 行，这里扫描多行以兼容。
+    """
+    upper = min(ws.max_row, max_scan_rows)
+    for r in range(1, upper + 1):
+        for c in range(1, ws.max_column + 1):
+            v = ws.cell(r, c).value
+            if v is None:
+                continue
+            s = str(v).strip()
+            for cand in candidates:
+                if (cand.lower() in s.lower()) if contains else (s == cand):
+                    return c
+    return None
+
+
+def _find_payroll_sheet(wb):
+    """含 GID 且含 Start date 的工作表即 Payroll 主表（避开 Payment Notice）。"""
+    for ws in wb.worksheets:
+        if (_find_header_col(ws, ("GID",)) is not None
+                and _find_header_col(ws, (PR_START_HEADER,), contains=True) is not None):
+            return ws
+    return None
+
+
+def _build_payroll_map(ws) -> dict[str, tuple]:
+    """GID → (start_value, start_fmt, last_value, last_fmt)。
+
+    供应商表里 Start date 是文本（如 '01-07-2019'），Last working date 是数字 0
+    且 number_format 为 '\\-'（在岗显示为短横）。连同 number_format 一起复制，
+    追加列才能保持同样的显示。表尾的 'Note:' / 'Prepared by' 等不会匹配真实 GID，
+    留在 map 里也无害。
+    """
+    gid_col = _find_header_col(ws, ("GID",))
+    start_col = _find_header_col(ws, (PR_START_HEADER,), contains=True)
+    last_col = _find_header_col(ws, (PR_LAST_HEADER,), contains=True)
+    missing = [
+        name for name, col in (
+            ("GID", gid_col), (PR_START_HEADER, start_col), (PR_LAST_HEADER, last_col),
+        ) if col is None
+    ]
+    if missing:
+        raise ValueError(f"Payroll 报告未找到必需列：{missing}")
+
+    mp: dict[str, tuple] = {}
+    for r in range(1, ws.max_row + 1):
+        raw = ws.cell(r, gid_col).value
+        if raw is None:
+            continue
+        gid = str(raw).strip()
+        if gid == "" or gid == "GID":
+            continue
+        s_cell = ws.cell(r, start_col)
+        l_cell = ws.cell(r, last_col)
+        mp[gid] = (s_cell.value, s_cell.number_format, l_cell.value, l_cell.number_format)
+    return mp
+
+
+def _clone_style(src, dst) -> None:
+    """把 src 单元格的视觉样式复制到 dst（不含 number_format，单独设置）。"""
+    dst.font = copy(src.font)
+    dst.fill = copy(src.fill)
+    dst.border = copy(src.border)
+    dst.alignment = copy(src.alignment)
+
+
+def _insert_blank_cols(ws, at: int, n: int) -> None:
+    """在第 ``at`` 列前插入 n 个空列，并把受影响的合并区右移 n。
+
+    openpyxl 的 ``insert_cols`` 会搬动单元格的值与样式，但**不会**搬动合并区
+    （留着会和新列重叠、令表头错位）。列宽则按列号保持不动——这与 Excel 手动
+    插入列的表现一致（薪资块各列宽度留在原列号上），故无需处理。
+    """
+    old = [(m.min_col, m.min_row, m.max_col, m.max_row) for m in ws.merged_cells.ranges]
+    # 先在插入前拆掉合并（此时各单元格都还在，unmerge 不会因新空列缺单元格而 KeyError）
+    for m in list(ws.merged_cells.ranges):
+        ws.unmerge_cells(str(m))
+    ws.insert_cols(at, n)
+    for c1, r1, c2, r2 in old:
+        ws.merge_cells(
+            start_row=r1, end_row=r2,
+            start_column=c1 + n if c1 >= at else c1,
+            end_column=c2 + n if c2 >= at else c2,
+        )
 
 
 def _process_gl_like(
@@ -148,7 +251,7 @@ class VaVnReportTask(TaskBase):
                 kind="13th", code_headers=("G/L Code", "GL Code"),
             )
         elif station.lower() == "variance":
-            yield from self._run_variance_placeholder(input_path, output_dir, opts)
+            yield from self._run_variance(input_path, output_dir, opts, password)
         else:
             # 没传 station：保留 placeholder 行为以兼容旧调用
             yield from self._run_legacy_placeholder(output_dir, opts)
@@ -183,22 +286,102 @@ class VaVnReportTask(TaskBase):
         yield str(out_path)
         yield ProgressEvent(done=2, total=2, note="done")
 
-    # ── Variance（暂为占位） ─────────────────────────────────────────────
+    # ── Variance ─────────────────────────────────────────────────────────
 
-    def _run_variance_placeholder(
-        self, input_path: Path, output_dir: Path, options: dict
+    def _run_variance(
+        self, input_path: Path, output_dir: Path, options: dict, password: str
     ) -> Iterator[TaskEvent]:
+        """Payroll(input_path) × Variance(options['input2']) 按 GID 关联。
+
+        把 Payroll 的 Start date / Last working date 插入到 Variance 的
+        Full Name 之后（第 5、6 列）。
+        """
         period = options.get("period") or time.strftime("%b %Y")
         dashed = str(period).replace(" ", "-")
-        yield LogEvent(f"读取 Variance 输入：{input_path.name} · {period}")
-        time.sleep(0.1)
-        yield ProgressEvent(done=0, total=1, note="Variance")
+
+        # 服务器只校验主输入(input)存在；第二个文件得自己兜底。
+        variance_in = options.get("input2")
+        if not variance_in:
+            raise ValueError("缺少 Variance 报告（未收到第二个输入文件）")
+        variance_path = Path(str(variance_in))
+        if not variance_path.exists():
+            raise ValueError(f"Variance 报告不存在：{variance_path}")
+
+        yield LogEvent(f"读取 Payroll：{input_path.name}")
+        yield ProgressEvent(done=0, total=3, note="解密 Payroll")
+        pw = openpyxl.load_workbook(_decrypt(input_path, password), data_only=True)
+        pw_ws = _find_payroll_sheet(pw)
+        if pw_ws is None:
+            raise ValueError("Payroll 报告未找到含 GID / Start date 的工作表")
+        payroll_map = _build_payroll_map(pw_ws)
+        yield LogEvent(f"Payroll：建立 GID 索引 {len(payroll_map)} 条", lvl="ok")
+
+        yield ProgressEvent(done=1, total=3, note="解密 Variance")
+        yield LogEvent(f"读取 Variance：{variance_path.name}")
+        vw = openpyxl.load_workbook(_decrypt(variance_path, password), data_only=False)
+        vw_ws = vw.active
+        gid_col = _find_header_col(vw_ws, ("GID",))
+        if gid_col is None:
+            raise ValueError("Variance 报告未找到 GID 列")
+        name_col = _find_header_col(vw_ws, ("Full Name",))
+        if name_col is None:
+            raise ValueError("Variance 报告未找到 Full Name 列")
+
+        # 紧跟 Full Name 插入两列（gid_col 在其左侧，列号不受影响）
+        start_out = name_col + 1
+        last_out = start_out + 1
+        _insert_blank_cols(vw_ws, start_out, 2)
+        for col, title, width in (
+            (start_out, OUT_START_HEADER, 22),
+            (last_out, OUT_LAST_HEADER, 25),
+        ):
+            hdr = vw_ws.cell(1, col)
+            hdr.value = title
+            # 身份列(No./GID/…)的表头是纵向合并 1:2，两列日期照此对齐
+            vw_ws.merge_cells(start_row=1, start_column=col, end_row=2, end_column=col)
+            _clone_style(vw_ws.cell(1, gid_col), hdr)
+            vw_ws.column_dimensions[get_column_letter(col)].width = width
+
+        total = 0
+        matched = 0
+        for r in range(1, vw_ws.max_row + 1):
+            raw = vw_ws.cell(r, gid_col).value
+            if raw is None:
+                continue
+            gid = str(raw).strip()
+            if gid == "" or gid == "GID":
+                continue
+            total += 1
+            rec = payroll_map.get(gid)
+            if rec is None:
+                continue
+            s_val, s_fmt, l_val, l_fmt = rec
+            # Payroll 用 0（配 '-' 格式）表示在岗 → 离职日留空
+            if l_val in (None, "", 0, "0"):
+                l_val, l_fmt = None, "General"
+            src = vw_ws.cell(r, gid_col)
+            for col, val, fmt in ((start_out, s_val, s_fmt), (last_out, l_val, l_fmt)):
+                cell = vw_ws.cell(r, col)
+                cell.value = val
+                _clone_style(src, cell)
+                cell.number_format = fmt
+            matched += 1
+
+        yield ProgressEvent(done=2, total=3, note="加密写出")
         out = output_dir / f"VarianVN_Variance_{dashed}_CDP.xlsx"
-        with out.open("wb") as f:
-            f.write(os.urandom(VARIANCE_PLACEHOLDER_BYTES))
-        yield LogEvent(f"写出：{out.name}（占位）", lvl="warn")
+        _save_encrypted(vw, out, password)
+
+        if matched == total:
+            yield LogEvent(f"Variance：{total} 行全部按 GID 匹配", lvl="ok")
+        else:
+            yield LogEvent(
+                f"Variance：{total} 行，匹配 {matched} 行，"
+                f"{total - matched} 行未在 Payroll 找到 GID",
+                lvl="warn",
+            )
+        yield LogEvent(f"写出：{out.name}", lvl="ok")
         yield str(out)
-        yield ProgressEvent(done=1, total=1, note="done")
+        yield ProgressEvent(done=3, total=3, note="done")
 
     # ── 旧 placeholder（无 station 时） ───────────────────────────────────
 
